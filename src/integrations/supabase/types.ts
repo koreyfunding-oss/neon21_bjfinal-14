@@ -14,7 +14,175 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cis_logs: {
+        Row: {
+          aggression_mode: string | null
+          created_at: string
+          dealer_card: string
+          ev_score: number | null
+          heat_index: number | null
+          id: string
+          player_cards: string[]
+          recommendation: string
+          user_id: string
+        }
+        Insert: {
+          aggression_mode?: string | null
+          created_at?: string
+          dealer_card: string
+          ev_score?: number | null
+          heat_index?: number | null
+          id?: string
+          player_cards: string[]
+          recommendation: string
+          user_id: string
+        }
+        Update: {
+          aggression_mode?: string | null
+          created_at?: string
+          dealer_card?: string
+          ev_score?: number | null
+          heat_index?: number | null
+          id?: string
+          player_cards?: string[]
+          recommendation?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cis_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          daily_cis_used: number
+          daily_sidebet_used: number
+          device_fingerprint: string | null
+          id: string
+          last_reset_date: string | null
+          rank: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          total_cis_runs: number
+          updated_at: string
+          user_id: string
+          whop_id: string | null
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          daily_cis_used?: number
+          daily_sidebet_used?: number
+          device_fingerprint?: string | null
+          id?: string
+          last_reset_date?: string | null
+          rank?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          total_cis_runs?: number
+          updated_at?: string
+          user_id: string
+          whop_id?: string | null
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          daily_cis_used?: number
+          daily_sidebet_used?: number
+          device_fingerprint?: string | null
+          id?: string
+          last_reset_date?: string | null
+          rank?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          total_cis_runs?: number
+          updated_at?: string
+          user_id?: string
+          whop_id?: string | null
+          xp?: number
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          bonus_granted: boolean | null
+          created_at: string
+          id: string
+          referred_id: string
+          referrer_id: string
+        }
+        Insert: {
+          bonus_granted?: boolean | null
+          created_at?: string
+          id?: string
+          referred_id: string
+          referrer_id: string
+        }
+        Update: {
+          bonus_granted?: boolean | null
+          created_at?: string
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_tokens: {
+        Row: {
+          created_at: string
+          device_fingerprint: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +191,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      subscription_tier: "free" | "basic" | "elite" | "blackout" | "lifetime"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +318,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      subscription_tier: ["free", "basic", "elite", "blackout", "lifetime"],
+    },
   },
 } as const
