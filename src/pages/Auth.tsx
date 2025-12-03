@@ -78,7 +78,7 @@ const Auth = () => {
         <div className="bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl shadow-primary/20">
           <div className="flex flex-col items-center mb-8">
             <div className="relative">
-              <div className="absolute inset-0 bg-primary/60 blur-3xl rounded-full scale-[2]" />
+              <div className="absolute inset-0 bg-primary/60 blur-3xl rounded-full scale-[2] animate-pulse" />
               <img src={neon21Logo} alt="Neon21" className="relative h-24 mb-4 drop-shadow-[0_0_40px_hsl(var(--primary)/0.8)]" />
             </div>
             <p className="text-muted-foreground text-sm">Blackjack Intelligence System</p>
