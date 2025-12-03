@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import syndicateLogo from "@/assets/syndicate-supremacy-logo.png";
 import neon21Logo from "@/assets/neon21-logo.png";
 
 const Auth = () => {
@@ -78,8 +77,7 @@ const Auth = () => {
       >
         <div className="bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-2xl shadow-primary/20">
           <div className="flex flex-col items-center mb-8">
-            <img src={syndicateLogo} alt="Syndicate Supremacy" className="h-20 mb-4" />
-            <img src={neon21Logo} alt="Neon21" className="h-8 mb-2" />
+            <img src={neon21Logo} alt="Neon21" className="h-24 mb-4" />
             <p className="text-muted-foreground text-sm">Blackjack Intelligence System</p>
           </div>
 
