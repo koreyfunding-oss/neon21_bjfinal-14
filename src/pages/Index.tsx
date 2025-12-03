@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeonHeader } from '@/components/NeonHeader';
 import { PlayingCard, CardSelector } from '@/components/PlayingCard';
@@ -12,6 +13,9 @@ import { AggressionSelector } from '@/components/AggressionSelector';
 import { DealerVolatility } from '@/components/DealerVolatility';
 import { BetSizing } from '@/components/BetSizing';
 import { SoundToggle } from '@/components/SoundToggle';
+import { SubscriptionBadge } from '@/components/SubscriptionBadge';
+import { UsageIndicator } from '@/components/UsageIndicator';
+import { useAuth } from '@/hooks/useAuth';
 import { analyzeHand, calculateHandTotal, getDealerBustProbability, type HandAnalysis } from '@/lib/blackjackStrategy';
 import { 
   createDeckState, 
@@ -28,13 +32,16 @@ import { analyzeCIS, calculateHeatIndex, type AggressionMode, type CISAnalysis }
 import { initializeSecurity, generateWatermark } from '@/lib/security';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { cn } from '@/lib/utils';
-import { Shield, Eye, EyeOff, Settings } from 'lucide-react';
+import { Shield, Eye, EyeOff, Settings, LogOut } from 'lucide-react';
 
 const initialSession: SessionData = {
   wins: 0, losses: 0, pushes: 0, blackjacks: 0, currentStreak: 0, handsPlayed: 0,
 };
 
 export default function Index() {
+  const navigate = useNavigate();
+  const { user, profile, loading, signOut, getUsageLimits, canUseCIS } = useAuth();
+  
   const [playerCards, setPlayerCards] = useState<string[]>([]);
   const [dealerUpcard, setDealerUpcard] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<HandAnalysis | null>(null);
@@ -53,6 +60,15 @@ export default function Index() {
 
   useEffect(() => { initializeSecurity(); }, []);
   useEffect(() => { setEnabled(soundEnabled); }, [soundEnabled, setEnabled]);
+  
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [loading, user, navigate]);
+
+  const usageLimits = getUsageLimits();
 
   const tableState = useMemo(() => ({
     trueCount: getTrueCount(deckState),
@@ -133,8 +149,20 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background cyber-grid relative overflow-hidden">
       <div className="fixed inset-0 pointer-events-none"><div className="scan-line absolute inset-0" /></div>
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 backdrop-blur-sm">
-        <Shield className="w-3 h-3 text-green-400" /><span className="text-[10px] text-green-400 font-mono">{securityBadge}</span>
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+        {profile && <SubscriptionBadge tier={profile.tier} />}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 backdrop-blur-sm">
+          <Shield className="w-3 h-3 text-green-400" /><span className="text-[10px] text-green-400 font-mono">{securityBadge}</span>
+        </div>
+        {user && (
+          <button 
+            onClick={() => { signOut(); navigate('/auth'); }} 
+            className="p-2 rounded-full bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive/20 transition-colors"
+            title="Sign Out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-7xl">
@@ -211,6 +239,18 @@ export default function Index() {
           </div>
 
           <div className="space-y-6">
+            {profile && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm">
+                <h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Usage Status</h3>
+                <UsageIndicator 
+                  used={profile.daily_cis_used} 
+                  limit={usageLimits.daily_cis} 
+                  type="CIS"
+                  xp={profile.xp}
+                  rank={profile.rank}
+                />
+              </motion.div>
+            )}
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Heat Index</h3><HeatIndex heat={heatIndex} trueCount={tableState.trueCount} /></motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Dealer Analysis</h3><DealerVolatility dealerUpcard={dealerUpcard} bustProbability={bustProbability} /></motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
