@@ -17,7 +17,7 @@ interface WhopMembership {
 
 // Map Whop product IDs to tiers
 const TIER_MAP: Record<string, string> = {
-  "prod_basic": "basic",
+  "prod_74ZbiZNaL4cai": "basic",
   "prod_elite": "elite", 
   "prod_blackout": "blackout",
   "prod_lifetime": "lifetime",
