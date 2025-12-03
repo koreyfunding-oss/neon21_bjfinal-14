@@ -11,6 +11,7 @@ import { HeatIndex } from '@/components/HeatIndex';
 import { AggressionSelector } from '@/components/AggressionSelector';
 import { DealerVolatility } from '@/components/DealerVolatility';
 import { BetSizing } from '@/components/BetSizing';
+import { SoundToggle } from '@/components/SoundToggle';
 import { analyzeHand, calculateHandTotal, getDealerBustProbability, type HandAnalysis } from '@/lib/blackjackStrategy';
 import { 
   createDeckState, 
@@ -25,6 +26,7 @@ import {
 } from '@/lib/cardTracker';
 import { analyzeCIS, calculateHeatIndex, type AggressionMode, type CISAnalysis } from '@/lib/cisEngine';
 import { initializeSecurity, generateWatermark } from '@/lib/security';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { cn } from '@/lib/utils';
 import { Shield, Eye, EyeOff, Settings } from 'lucide-react';
 
@@ -46,8 +48,11 @@ export default function Index() {
   const [aggressionMode, setAggressionMode] = useState<AggressionMode>('standard');
   const [baseUnit, setBaseUnit] = useState(25);
   const [securityBadge] = useState(() => generateWatermark());
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled } = useSoundEffects();
 
   useEffect(() => { initializeSecurity(); }, []);
+  useEffect(() => { setEnabled(soundEnabled); }, [soundEnabled, setEnabled]);
 
   const tableState = useMemo(() => ({
     trueCount: getTrueCount(deckState),
@@ -69,6 +74,7 @@ export default function Index() {
   }, [analysis, playerCards, dealerUpcard, tableState, aggressionMode]);
 
   const handleCardSelect = useCallback((value: string) => {
+    playSound('cardSelect');
     if (activeInput === 'player' && playerCards.length < 6) {
       const newCards = [...playerCards, value];
       setPlayerCards(newCards);
@@ -80,16 +86,17 @@ export default function Index() {
       setDeckState(prev => trackCard(prev, value));
       if (playerCards.length >= 2) setAnalysis(analyzeHand(playerCards, value));
     }
-  }, [activeInput, playerCards, dealerUpcard]);
+  }, [activeInput, playerCards, dealerUpcard, playSound]);
 
   const handleRemoveCard = useCallback((index: number) => {
+    playSound('cardDeselect');
     const card = playerCards[index];
     const newCards = playerCards.filter((_, i) => i !== index);
     setPlayerCards(newCards);
     setDeckState(prev => untrackCard(prev, card));
     if (dealerUpcard && newCards.length >= 2) setAnalysis(analyzeHand(newCards, dealerUpcard));
     else setAnalysis(null);
-  }, [playerCards, dealerUpcard]);
+  }, [playerCards, dealerUpcard, playSound]);
 
   const handleClearHand = useCallback(() => {
     playerCards.forEach(card => setDeckState(prev => untrackCard(prev, card)));
@@ -103,6 +110,11 @@ export default function Index() {
   const handleTableCardRemoved = useCallback((card: string) => setDeckState(prev => untrackCard(prev, card)), []);
 
   const handleRecordResult = useCallback((result: 'win' | 'loss' | 'push' | 'blackjack') => {
+    if (result === 'blackjack') playBlackjackFanfare();
+    else if (result === 'win') playWinFanfare();
+    else if (result === 'loss') playSound('lose');
+    else playSound('push');
+    
     setSession(prev => {
       const n = { ...prev, handsPlayed: prev.handsPlayed + 1 };
       if (result === 'win') { n.wins++; n.currentStreak = prev.currentStreak >= 0 ? prev.currentStreak + 1 : 1; }
@@ -112,7 +124,7 @@ export default function Index() {
       return n;
     });
     handleClearHand();
-  }, [handleClearHand]);
+  }, [handleClearHand, playSound, playWinFanfare, playBlackjackFanfare]);
 
   const handleResetSession = useCallback(() => { setSession(initialSession); setDeckState(createDeckState(numDecks)); }, [numDecks]);
   const { total, soft } = playerCards.length >= 1 ? calculateHandTotal(playerCards) : { total: 0, soft: false };
@@ -139,8 +151,9 @@ export default function Index() {
           </div>
           <div className="flex-1 max-w-md"><AggressionSelector value={aggressionMode} onChange={setAggressionMode} /></div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowSettings(!showSettings)} className={cn('p-2 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-4 h-4" /></button>
-            <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-secondary text-xs text-muted-foreground hover:text-primary transition-colors">
+            <SoundToggle enabled={soundEnabled} onToggle={() => { playSound('click'); setSoundEnabled(!soundEnabled); }} />
+            <button onClick={() => { playSound('click'); setShowSettings(!showSettings); }} className={cn('p-2 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-4 h-4" /></button>
+            <button onClick={() => { playSound('click'); setShowAdvanced(!showAdvanced); }} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-secondary text-xs text-muted-foreground hover:text-primary transition-colors">
               {showAdvanced ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}{showAdvanced ? 'Simple' : 'Advanced'}
             </button>
           </div>
