@@ -1,12 +1,24 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeonHeader } from '@/components/NeonHeader';
 import { PlayingCard, CardSelector } from '@/components/PlayingCard';
 import { ActionRecommendation } from '@/components/ActionRecommendation';
 import { SessionStats, type SessionData } from '@/components/SessionStats';
 import { DealerProbability } from '@/components/DealerProbability';
+import { CardTracker } from '@/components/CardTracker';
+import { SideBetPrediction } from '@/components/SideBetPrediction';
+import { TableCards } from '@/components/TableCards';
 import { analyzeHand, calculateHandTotal, type HandAnalysis } from '@/lib/blackjackStrategy';
+import { 
+  createDeckState, 
+  trackCard, 
+  untrackCard, 
+  getSideBetPredictions,
+  type DeckState 
+} from '@/lib/cardTracker';
+import { initializeSecurity, generateWatermark } from '@/lib/security';
 import { cn } from '@/lib/utils';
+import { Shield, Eye, EyeOff } from 'lucide-react';
 
 const initialSession: SessionData = {
   wins: 0,
@@ -23,19 +35,35 @@ export default function Index() {
   const [analysis, setAnalysis] = useState<HandAnalysis | null>(null);
   const [session, setSession] = useState<SessionData>(initialSession);
   const [activeInput, setActiveInput] = useState<'player' | 'dealer'>('player');
+  const [deckState, setDeckState] = useState<DeckState>(() => createDeckState(6));
+  const [numDecks, setNumDecks] = useState(6);
+  const [showAdvanced, setShowAdvanced] = useState(true);
+  const [securityBadge] = useState(() => generateWatermark());
+
+  // Initialize security on mount
+  useEffect(() => {
+    initializeSecurity();
+  }, []);
+
+  const sideBetPrediction = getSideBetPredictions(deckState, playerCards[0]);
 
   const handleCardSelect = useCallback((value: string) => {
     if (activeInput === 'player') {
       if (playerCards.length < 6) {
         const newCards = [...playerCards, value];
         setPlayerCards(newCards);
+        setDeckState(prev => trackCard(prev, value));
         
         if (dealerUpcard && newCards.length >= 2) {
           setAnalysis(analyzeHand(newCards, dealerUpcard));
         }
       }
     } else {
+      if (dealerUpcard) {
+        setDeckState(prev => untrackCard(prev, dealerUpcard));
+      }
       setDealerUpcard(value);
+      setDeckState(prev => trackCard(prev, value));
       if (playerCards.length >= 2) {
         setAnalysis(analyzeHand(playerCards, value));
       }
@@ -43,8 +71,10 @@ export default function Index() {
   }, [activeInput, playerCards, dealerUpcard]);
 
   const handleRemoveCard = useCallback((index: number) => {
+    const card = playerCards[index];
     const newCards = playerCards.filter((_, i) => i !== index);
     setPlayerCards(newCards);
+    setDeckState(prev => untrackCard(prev, card));
     
     if (dealerUpcard && newCards.length >= 2) {
       setAnalysis(analyzeHand(newCards, dealerUpcard));
@@ -54,10 +84,36 @@ export default function Index() {
   }, [playerCards, dealerUpcard]);
 
   const handleClearHand = useCallback(() => {
+    // Untrack player cards
+    playerCards.forEach(card => {
+      setDeckState(prev => untrackCard(prev, card));
+    });
+    // Untrack dealer card
+    if (dealerUpcard) {
+      setDeckState(prev => untrackCard(prev, dealerUpcard));
+    }
+    
     setPlayerCards([]);
     setDealerUpcard(null);
     setAnalysis(null);
     setActiveInput('player');
+  }, [playerCards, dealerUpcard]);
+
+  const handleResetDeck = useCallback(() => {
+    setDeckState(createDeckState(numDecks));
+  }, [numDecks]);
+
+  const handleDeckChange = useCallback((newDecks: number) => {
+    setNumDecks(newDecks);
+    setDeckState(createDeckState(newDecks));
+  }, []);
+
+  const handleTableCardPlayed = useCallback((card: string) => {
+    setDeckState(prev => trackCard(prev, card));
+  }, []);
+
+  const handleTableCardRemoved = useCallback((card: string) => {
+    setDeckState(prev => untrackCard(prev, card));
   }, []);
 
   const handleRecordResult = useCallback((result: 'win' | 'loss' | 'push' | 'blackjack') => {
@@ -89,7 +145,8 @@ export default function Index() {
 
   const handleResetSession = useCallback(() => {
     setSession(initialSession);
-  }, []);
+    setDeckState(createDeckState(numDecks));
+  }, [numDecks]);
 
   const { total, soft } = playerCards.length >= 1 
     ? calculateHandTotal(playerCards) 
@@ -102,11 +159,47 @@ export default function Index() {
         <div className="scan-line absolute inset-0" />
       </div>
 
+      {/* Security Badge */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 backdrop-blur-sm">
+        <Shield className="w-3 h-3 text-green-400" />
+        <span className="text-[10px] text-green-400 font-mono">{securityBadge}</span>
+      </div>
+
       {/* Main content */}
-      <div className="relative z-10 container mx-auto px-4 py-6 max-w-6xl">
+      <div className="relative z-10 container mx-auto px-4 py-6 max-w-7xl">
         <NeonHeader />
 
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6 mt-8">
+        {/* Deck Settings */}
+        <div className="flex items-center justify-between mt-6 mb-2">
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Decks:</span>
+            <div className="flex gap-1">
+              {[1, 2, 4, 6, 8].map(d => (
+                <button
+                  key={d}
+                  onClick={() => handleDeckChange(d)}
+                  className={cn(
+                    'w-8 h-8 rounded text-xs font-display transition-all',
+                    numDecks === d
+                      ? 'bg-primary text-primary-foreground shadow-neon'
+                      : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            {showAdvanced ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showAdvanced ? 'Hide' : 'Show'} Advanced
+          </button>
+        </div>
+
+        <div className="grid lg:grid-cols-[1fr_380px] gap-6 mt-4">
           {/* Main Game Area */}
           <div className="space-y-6">
             {/* Card Input Section */}
@@ -193,7 +286,10 @@ export default function Index() {
                             value={dealerUpcard}
                             size="sm"
                             selected
-                            onClick={() => setDealerUpcard(null)}
+                            onClick={() => {
+                              setDeckState(prev => untrackCard(prev, dealerUpcard));
+                              setDealerUpcard(null);
+                            }}
                           />
                         </motion.div>
                       ) : (
@@ -233,10 +329,61 @@ export default function Index() {
                 isSoft={soft}
               />
             </motion.div>
+
+            {/* Side Bet Predictions */}
+            <AnimatePresence>
+              {showAdvanced && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm">
+                    <h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">
+                      Side Bet Predictions
+                    </h3>
+                    <SideBetPrediction prediction={sideBetPrediction} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Table Cards Tracking */}
+            <AnimatePresence>
+              {showAdvanced && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm">
+                    <TableCards
+                      onCardPlayed={handleTableCardPlayed}
+                      onCardRemoved={handleTableCardRemoved}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Card Tracker */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 }}
+              className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"
+            >
+              <h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">
+                Card Counter
+              </h3>
+              <CardTracker deckState={deckState} onReset={handleResetDeck} />
+            </motion.div>
+
             {/* Dealer Probability */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
