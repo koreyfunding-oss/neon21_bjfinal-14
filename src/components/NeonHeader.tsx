@@ -14,9 +14,9 @@ export function NeonHeader() {
         <motion.div
           animate={{ 
             filter: [
-              'drop-shadow(0 0 8px hsl(180 100% 50% / 0.3))',
-              'drop-shadow(0 0 16px hsl(180 100% 50% / 0.6))',
-              'drop-shadow(0 0 8px hsl(180 100% 50% / 0.3))',
+              'drop-shadow(0 0 10px hsl(175 100% 45% / 0.4))',
+              'drop-shadow(0 0 20px hsl(175 100% 50% / 0.7))',
+              'drop-shadow(0 0 10px hsl(175 100% 45% / 0.4))',
             ]
           }}
           transition={{ duration: 2, repeat: Infinity }}
@@ -34,7 +34,7 @@ export function NeonHeader() {
           <motion.h1
             className="text-2xl md:text-3xl font-display font-black tracking-wider"
             style={{
-              background: 'linear-gradient(135deg, hsl(180 100% 50%) 0%, hsl(180 100% 70%) 50%, hsl(180 100% 50%) 100%)',
+              background: 'linear-gradient(135deg, hsl(175 100% 45%) 0%, hsl(175 100% 65%) 50%, hsl(175 100% 45%) 100%)',
               backgroundSize: '200% auto',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
