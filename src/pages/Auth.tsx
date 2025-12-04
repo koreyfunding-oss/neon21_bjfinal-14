@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ const authSchema = z.object({
 });
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,7 +57,7 @@ const Auth = () => {
     }
   };
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateInputs()) return;
@@ -66,30 +65,16 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        toast({ title: "Welcome back, Syndicate member" });
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
-        if (error) throw error;
-        toast({ title: "Account created successfully! You can now sign in." });
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
+      toast({ title: "Welcome back, Syndicate member" });
     } catch (error: unknown) {
       let message = "Authentication failed";
       if (error instanceof Error) {
-        if (error.message.includes("User already registered")) {
-          message = "This email is already registered. Please sign in instead.";
-        } else if (error.message.includes("Invalid login credentials")) {
+        if (error.message.includes("Invalid login credentials")) {
           message = "Invalid email or password. Please try again.";
         } else {
           message = error.message;
@@ -122,7 +107,7 @@ const Auth = () => {
             <p className="text-muted-foreground text-sm">Blackjack Intelligence System</p>
           </div>
 
-          <form onSubmit={handleAuth} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground">Email</Label>
               <Input
@@ -158,22 +143,20 @@ const Auth = () => {
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3"
             >
               {loading ? (
-                <span className="animate-pulse">Processing...</span>
-              ) : isLogin ? (
-                "ACCESS SYNDICATE"
+                <span className="animate-pulse">Accessing...</span>
               ) : (
-                "JOIN THE SYNDICATE"
+                "ACCESS SYNDICATE"
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:text-primary/80 text-sm transition-colors"
+            <Link
+              to="/signup"
+              className="inline-block w-full py-3 border border-primary/50 rounded-lg text-primary hover:bg-primary/10 text-sm font-medium transition-colors"
             >
-              {isLogin ? "New agent? Create account" : "Already a member? Sign in"}
-            </button>
+              New agent? Create account
+            </Link>
           </div>
 
           <div className="mt-8 pt-6 border-t border-border">
