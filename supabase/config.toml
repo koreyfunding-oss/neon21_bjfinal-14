@@ -3,5 +3,8 @@ project_id = "wavqvrazndprfmmbbtdl"
 [functions.cis-evaluate]
 verify_jwt = true
 
+[functions.scan-cards]
+verify_jwt = true
+
 [functions.whop-validate]
 verify_jwt = true
