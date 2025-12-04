@@ -79,15 +79,15 @@ const cardValues = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q',
 
 export function CardSelector({ onSelect, selectedCards }: CardSelectorProps) {
   return (
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-7 gap-2 sm:gap-3">
       {cardValues.map((value) => (
         <motion.button
           key={value}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => onSelect(value)}
           className={cn(
-            'w-10 h-12 rounded-lg border-2 font-display font-bold text-sm transition-all duration-200',
+            'w-12 h-14 sm:w-14 sm:h-16 rounded-lg border-2 font-display font-bold text-base sm:text-lg transition-all duration-200',
             selectedCards.includes(value)
               ? 'border-primary bg-primary/20 text-primary shadow-neon'
               : 'border-border bg-card text-foreground hover:border-primary/50 hover:text-primary'

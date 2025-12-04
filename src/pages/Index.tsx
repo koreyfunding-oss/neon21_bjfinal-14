@@ -200,83 +200,83 @@ export default function Index() {
         )}
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-6 max-w-7xl">
+      <div className="relative z-10 container mx-auto px-3 py-3 max-w-7xl">
         <NeonHeader />
 
-        <div className="flex items-center justify-between mt-6 mb-4 gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between mt-3 mb-3 gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground uppercase tracking-wider">Decks:</span>
             <div className="flex gap-1">
               {[1, 2, 4, 6, 8].map(d => (
-                <button key={d} onClick={() => handleDeckChange(d)} className={cn('w-8 h-8 rounded text-xs font-display transition-all', numDecks === d ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-muted-foreground hover:text-foreground')}>{d}</button>
+                <button key={d} onClick={() => handleDeckChange(d)} className={cn('w-7 h-7 rounded text-xs font-display transition-all', numDecks === d ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-muted-foreground hover:text-foreground')}>{d}</button>
               ))}
             </div>
           </div>
-          <div className="flex-1 max-w-md"><AggressionSelector value={aggressionMode} onChange={setAggressionMode} /></div>
+          <div className="flex-1 max-w-sm"><AggressionSelector value={aggressionMode} onChange={setAggressionMode} /></div>
           <div className="flex items-center gap-2">
             <SoundToggle enabled={soundEnabled} onToggle={() => { playSound('click'); setSoundEnabled(!soundEnabled); }} />
-            <button onClick={() => { playSound('click'); setShowSettings(!showSettings); }} className={cn('p-2 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-4 h-4" /></button>
-            <button onClick={() => { playSound('click'); setShowAdvanced(!showAdvanced); }} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-secondary text-xs text-muted-foreground hover:text-primary transition-colors">
-              {showAdvanced ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}{showAdvanced ? 'Simple' : 'Advanced'}
+            <button onClick={() => { playSound('click'); setShowSettings(!showSettings); }} className={cn('p-1.5 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-4 h-4" /></button>
+            <button onClick={() => { playSound('click'); setShowAdvanced(!showAdvanced); }} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground hover:text-primary transition-colors">
+              {showAdvanced ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}{showAdvanced ? 'Simple' : 'Advanced'}
             </button>
           </div>
         </div>
 
         <AnimatePresence>{showSettings && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 overflow-hidden">
-            <div className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-3 overflow-hidden">
+            <div className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
               <BetSizing heatIndex={heatIndex} trueCount={tableState.trueCount} baseUnit={baseUnit} aggressionMode={aggressionMode} onBaseUnitChange={setBaseUnit} />
             </div>
           </motion.div>
         )}</AnimatePresence>
 
-        <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-          <div className="space-y-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm card-glow">
-              <div className="flex gap-2 mb-6">
-                <button onClick={() => setActiveInput('player')} className={cn('flex-1 py-2 px-4 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'player' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Your Hand {playerCards.length > 0 && `(${playerCards.length})`}</button>
-                <button onClick={() => setActiveInput('dealer')} className={cn('flex-1 py-2 px-4 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'dealer' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Dealer {dealerUpcard && `(${dealerUpcard})`}</button>
+        <div className="grid lg:grid-cols-[1fr_320px] gap-4">
+          <div className="space-y-4">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm card-glow">
+              <div className="flex gap-2 mb-4">
+                <button onClick={() => setActiveInput('player')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'player' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Your Hand {playerCards.length > 0 && `(${playerCards.length})`}</button>
+                <button onClick={() => setActiveInput('dealer')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'dealer' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Dealer {dealerUpcard && `(${dealerUpcard})`}</button>
               </div>
               <CardSelector onSelect={handleCardSelect} selectedCards={[]} />
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="grid grid-cols-2 gap-6">
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Your Cards {total > 0 && <span className="text-primary">({total}{soft && ' soft'})</span>}</p>
-                    <div className="flex gap-2 flex-wrap min-h-[72px]">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Your Cards {total > 0 && <span className="text-primary">({total}{soft && ' soft'})</span>}</p>
+                    <div className="flex gap-1.5 flex-wrap min-h-[60px]">
                       <AnimatePresence mode="popLayout">{playerCards.map((card, i) => (<motion.div key={`${card}-${i}`} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} layout><PlayingCard value={card} size="sm" onClick={() => handleRemoveCard(i)} /></motion.div>))}</AnimatePresence>
-                      {playerCards.length === 0 && <div className="flex items-center justify-center w-12 h-16 rounded-lg border-2 border-dashed border-border text-muted-foreground text-xs">+</div>}
+                      {playerCards.length === 0 && <div className="flex items-center justify-center w-10 h-14 rounded-lg border-2 border-dashed border-border text-muted-foreground text-xs">+</div>}
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Dealer Shows</p>
-                    <div className="flex gap-2 min-h-[72px]">
-                      {dealerUpcard ? <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><PlayingCard value={dealerUpcard} size="sm" selected onClick={() => { setDeckState(prev => untrackCard(prev, dealerUpcard)); setDealerUpcard(null); }} /></motion.div> : <div className="flex items-center justify-center w-12 h-16 rounded-lg border-2 border-dashed border-border text-muted-foreground text-xs">?</div>}
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Dealer Shows</p>
+                    <div className="flex gap-1.5 min-h-[60px]">
+                      {dealerUpcard ? <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><PlayingCard value={dealerUpcard} size="sm" selected onClick={() => { setDeckState(prev => untrackCard(prev, dealerUpcard)); setDealerUpcard(null); }} /></motion.div> : <div className="flex items-center justify-center w-10 h-14 rounded-lg border-2 border-dashed border-border text-muted-foreground text-xs">?</div>}
                       <PlayingCard value="?" faceDown size="sm" />
                     </div>
                   </div>
                 </div>
-                {(playerCards.length > 0 || dealerUpcard) && <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={handleClearHand} className="mt-4 text-xs text-muted-foreground hover:text-destructive transition-colors uppercase tracking-wider">Clear Hand</motion.button>}
+                {(playerCards.length > 0 || dealerUpcard) && <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={handleClearHand} className="mt-3 text-xs text-muted-foreground hover:text-destructive transition-colors uppercase tracking-wider">Clear Hand</motion.button>}
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-8 rounded-2xl border border-border bg-card/80 backdrop-blur-sm card-glow">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm card-glow">
               <ActionRecommendation analysis={analysis} playerTotal={total} isSoft={soft} cisOverride={cisAnalysis?.cisOverride} heatIndex={heatIndex} riskLevel={cisAnalysis?.riskLevel || 'medium'} />
             </motion.div>
 
             <AnimatePresence>{showAdvanced && (<>
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Side Bet Predictions</h3><SideBetPrediction prediction={sideBetPrediction} /></div>
+                <div className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-3 uppercase tracking-wider">Side Bet Predictions</h3><SideBetPrediction prediction={sideBetPrediction} /></div>
               </motion.div>
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><TableCards onCardPlayed={handleTableCardPlayed} onCardRemoved={handleTableCardRemoved} /></div>
+                <div className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><TableCards onCardPlayed={handleTableCardPlayed} onCardRemoved={handleTableCardRemoved} /></div>
               </motion.div>
             </>)}</AnimatePresence>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             {profile && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm">
-                <h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Usage Status</h3>
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
+                <h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Usage</h3>
                 <UsageIndicator 
                   used={profile.daily_cis_used} 
                   limit={usageLimits.daily_cis} 
@@ -286,14 +286,14 @@ export default function Index() {
                 />
               </motion.div>
             )}
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Heat Index</h3><HeatIndex heat={heatIndex} trueCount={tableState.trueCount} /></motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Dealer Analysis</h3><DealerVolatility dealerUpcard={dealerUpcard} bustProbability={bustProbability} /></motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-sm font-display font-bold text-primary mb-4 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm"><SessionStats session={session} onRecordResult={handleRecordResult} onReset={handleResetSession} /></motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Heat Index</h3><HeatIndex heat={heatIndex} trueCount={tableState.trueCount} /></motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Dealer Analysis</h3><DealerVolatility dealerUpcard={dealerUpcard} bustProbability={bustProbability} /></motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><SessionStats session={session} onRecordResult={handleRecordResult} onReset={handleResetSession} /></motion.div>
           </div>
         </div>
 
-        <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-12 text-center">
+        <motion.footer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-6 text-center">
           <p className="text-muted-foreground/50 text-xs uppercase tracking-wider">Syndicate Supremacy • Neon21 CIS Intelligence • Play Responsibly</p>
         </motion.footer>
       </div>

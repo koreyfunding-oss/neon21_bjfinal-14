@@ -7,38 +7,20 @@ export function NeonHeader() {
     <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative py-6"
+      className="relative py-3"
     >
-      {/* Parent Company Badge */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex items-center justify-center gap-2 mb-4"
-      >
-        <motion.img
-          src={syndicateLogo}
-          alt="Syndicate Supremacy"
-          className="w-6 h-6 opacity-60"
-          whileHover={{ opacity: 1, scale: 1.1 }}
-        />
-        <span className="text-[10px] text-muted-foreground uppercase tracking-[0.4em]">
-          A Syndicate Supremacy Product
-        </span>
-      </motion.div>
-
-      <div className="flex items-center justify-center gap-6">
+      <div className="flex items-center justify-center gap-4">
         {/* Neon21 Logo */}
         <motion.div
           animate={{ 
             filter: [
-              'drop-shadow(0 0 10px hsl(180 100% 50% / 0.3))',
-              'drop-shadow(0 0 20px hsl(180 100% 50% / 0.6))',
-              'drop-shadow(0 0 10px hsl(180 100% 50% / 0.3))',
+              'drop-shadow(0 0 8px hsl(180 100% 50% / 0.3))',
+              'drop-shadow(0 0 16px hsl(180 100% 50% / 0.6))',
+              'drop-shadow(0 0 8px hsl(180 100% 50% / 0.3))',
             ]
           }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="w-16 h-16 md:w-20 md:h-20"
+          className="w-12 h-12 md:w-14 md:h-14"
         >
           <img
             src={neon21Logo}
@@ -50,7 +32,7 @@ export function NeonHeader() {
         {/* Title */}
         <div className="text-left">
           <motion.h1
-            className="text-4xl md:text-5xl font-display font-black tracking-wider"
+            className="text-2xl md:text-3xl font-display font-black tracking-wider"
             style={{
               background: 'linear-gradient(135deg, hsl(180 100% 50%) 0%, hsl(180 100% 70%) 50%, hsl(180 100% 50%) 100%)',
               backgroundSize: '200% auto',
@@ -65,29 +47,35 @@ export function NeonHeader() {
           >
             NEON21
           </motion.h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-1.5">
             <motion.div
               animate={{ opacity: [0.4, 1, 0.4] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="w-2 h-2 rounded-full bg-primary"
+              className="w-1.5 h-1.5 rounded-full bg-primary"
             />
-            <p className="text-muted-foreground text-xs uppercase tracking-[0.2em]">
-              CIS Intelligence System
+            <p className="text-muted-foreground text-[10px] uppercase tracking-[0.15em]">
+              CIS Intelligence
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Decorative elements */}
-      <motion.div
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 h-px w-64 bg-gradient-to-r from-transparent via-primary to-transparent"
-        animate={{ opacity: [0.3, 0.8, 0.3] }}
-        transition={{ duration: 3, repeat: Infinity }}
-      />
-      
-      {/* Corner accents */}
-      <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-primary/30" />
-      <div className="absolute top-0 right-0 w-8 h-8 border-r-2 border-t-2 border-primary/30" />
+        {/* Syndicate badge - inline */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="hidden sm:flex items-center gap-1.5 ml-4 pl-4 border-l border-border"
+        >
+          <img
+            src={syndicateLogo}
+            alt="Syndicate Supremacy"
+            className="w-5 h-5 opacity-50"
+          />
+          <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">
+            Syndicate
+          </span>
+        </motion.div>
+      </div>
     </motion.header>
   );
 }
