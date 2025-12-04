@@ -262,19 +262,16 @@ export default function Index() {
         <div className="grid lg:grid-cols-[1fr_320px] gap-4">
           <div className="space-y-4">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm card-glow">
-              {profile && profile.tier !== 'free' ? (
-                <CameraScanner 
-                  onCardsDetected={handleCardsDetected} 
-                  isActive={cameraActive} 
-                  onToggle={() => setCameraActive(!cameraActive)} 
-                />
-              ) : (
-                <div className="p-3 rounded-lg border border-primary/20 bg-primary/5 mb-4">
-                  <p className="text-xs text-muted-foreground">
-                    <span className="text-primary font-semibold">Auto Card Scanner</span> — Available on paid tiers. Upgrade to enable real-time camera scanning.
-                  </p>
+              {profile?.tier === 'free' && (
+                <div className="px-2 py-1 mb-3 rounded border border-yellow-500/30 bg-yellow-500/10 text-[10px] text-yellow-400 uppercase tracking-wider">
+                  Trial Feature — Requires paid subscription
                 </div>
               )}
+              <CameraScanner 
+                onCardsDetected={handleCardsDetected} 
+                isActive={cameraActive} 
+                onToggle={() => setCameraActive(!cameraActive)} 
+              />
               <div className="flex gap-2 mb-4 mt-4">
                 <button onClick={() => setActiveInput('player')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'player' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Your Hand {playerCards.length > 0 && `(${playerCards.length})`}</button>
                 <button onClick={() => setActiveInput('dealer')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'dealer' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Dealer {dealerUpcard && `(${dealerUpcard})`}</button>
