@@ -96,8 +96,8 @@ export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraSca
   useEffect(() => {
     if (isActive) {
       startCamera();
-      // Scan every 2 seconds for continuous mode
-      intervalRef.current = setInterval(captureAndScan, 2000);
+      // Scan every 1 second for continuous mode
+      intervalRef.current = setInterval(captureAndScan, 1000);
     } else {
       stopCamera();
     }
