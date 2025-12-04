@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { DollarSign, TrendingUp, TrendingDown, Zap, Target, Repeat } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Zap, Target, Repeat, Wallet, Percent, Edit2, Check } from 'lucide-react';
 import { SessionData } from './SessionStats';
 
 type BettingStrategy = 'flat' | 'martingale' | 'paroli' | '1-3-2-6';
@@ -13,6 +14,8 @@ interface ProfitStrategyProps {
   heatIndex: number;
   onStrategyChange: (strategy: BettingStrategy) => void;
   activeStrategy: BettingStrategy;
+  bankroll: number;
+  onBankrollChange: (value: number) => void;
 }
 
 const strategies: { value: BettingStrategy; label: string; description: string }[] = [
@@ -30,11 +33,28 @@ export function ProfitStrategy({
   heatIndex,
   onStrategyChange,
   activeStrategy,
+  bankroll,
+  onBankrollChange,
 }: ProfitStrategyProps) {
+  const [isEditingBankroll, setIsEditingBankroll] = useState(false);
+  const [tempBankroll, setTempBankroll] = useState(bankroll.toString());
   // Calculate session profit in dollars
   const grossWins = (session.wins * baseUnit) + (session.blackjacks * baseUnit * 1.5);
   const grossLosses = session.losses * baseUnit;
   const netProfit = grossWins - grossLosses;
+  
+  // Bankroll tracking
+  const currentBankroll = bankroll + netProfit;
+  const profitPercentage = bankroll > 0 ? ((netProfit / bankroll) * 100) : 0;
+  const bankrollChange = bankroll > 0 ? ((currentBankroll - bankroll) / bankroll) * 100 : 0;
+  
+  const handleBankrollSave = () => {
+    const value = parseFloat(tempBankroll);
+    if (!isNaN(value) && value > 0) {
+      onBankrollChange(value);
+    }
+    setIsEditingBankroll(false);
+  };
   
   // Calculate potential win on current bet
   const potentialWin = currentBet;
@@ -104,6 +124,91 @@ export function ProfitStrategy({
 
   return (
     <div className="space-y-4">
+      {/* Bankroll Tracker */}
+      <div className="p-3 rounded-xl border border-border bg-secondary/30">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-primary" />
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Bankroll</span>
+          </div>
+          {!isEditingBankroll ? (
+            <button
+              onClick={() => { setTempBankroll(bankroll.toString()); setIsEditingBankroll(true); }}
+              className="p-1 rounded hover:bg-secondary transition-colors"
+            >
+              <Edit2 className="w-3 h-3 text-muted-foreground" />
+            </button>
+          ) : (
+            <button
+              onClick={handleBankrollSave}
+              className="p-1 rounded bg-primary/20 hover:bg-primary/30 transition-colors"
+            >
+              <Check className="w-3 h-3 text-primary" />
+            </button>
+          )}
+        </div>
+        
+        {isEditingBankroll ? (
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-display text-muted-foreground">$</span>
+            <input
+              type="number"
+              value={tempBankroll}
+              onChange={(e) => setTempBankroll(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleBankrollSave()}
+              className="flex-1 bg-background border border-border rounded-lg px-2 py-1 text-lg font-display font-bold text-foreground focus:outline-none focus:border-primary"
+              autoFocus
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground">Starting</p>
+              <p className="text-lg font-display font-bold text-foreground">${bankroll.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Current</p>
+              <p className={cn(
+                'text-lg font-display font-bold',
+                currentBankroll >= bankroll ? 'text-success' : 'text-destructive'
+              )}>
+                ${currentBankroll.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* Profit/Loss Percentage Bar */}
+        {!isEditingBankroll && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[10px] mb-1">
+              <span className="text-muted-foreground">P/L %</span>
+              <span className={cn(
+                'font-display font-bold',
+                profitPercentage >= 0 ? 'text-success' : 'text-destructive'
+              )}>
+                {profitPercentage >= 0 ? '+' : ''}{profitPercentage.toFixed(1)}%
+              </span>
+            </div>
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(Math.abs(profitPercentage), 100)}%` }}
+                className={cn(
+                  'h-full rounded-full',
+                  profitPercentage >= 0 ? 'bg-success' : 'bg-destructive'
+                )}
+              />
+            </div>
+            <div className="flex justify-between text-[8px] text-muted-foreground mt-1">
+              <span>-100%</span>
+              <span>0%</span>
+              <span>+100%</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Session Profit Display */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

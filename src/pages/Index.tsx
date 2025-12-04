@@ -68,6 +68,7 @@ export default function Index() {
   const [turboMode, setTurboMode] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
+  const [bankroll, setBankroll] = useState(500);
   const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled } = useSoundEffects();
 
   // Calculate current bet based on strategy
@@ -442,6 +443,8 @@ export default function Index() {
                 heatIndex={heatIndex}
                 activeStrategy={bettingStrategy}
                 onStrategyChange={setBettingStrategy}
+                bankroll={bankroll}
+                onBankrollChange={setBankroll}
               />
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.22 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><SessionStats session={session} onRecordResult={handleRecordResult} onReset={handleResetSession} /></motion.div>
