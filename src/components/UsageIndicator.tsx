@@ -19,29 +19,29 @@ export const UsageIndicator = ({ used, limit, type, xp = 0, rank = "Rookie" }: U
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card/50 backdrop-blur border border-border rounded-lg p-4"
+      className="bg-card/50 backdrop-blur border border-border rounded-lg p-3"
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium text-foreground">{type} Runs</span>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-medium text-foreground">{type} Runs</span>
         </div>
-        <span className="text-xs text-muted-foreground">
-          {isUnlimited ? "Unlimited" : `${remaining} left today`}
+        <span className="text-[10px] text-muted-foreground">
+          {isUnlimited ? "Unlimited" : `${remaining} left`}
         </span>
       </div>
 
       <Progress 
         value={percentage} 
-        className="h-2 bg-muted"
+        className="h-1.5 bg-muted"
       />
 
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="w-3.5 h-3.5 text-accent" />
-          <span className="text-xs text-muted-foreground">{xp.toLocaleString()} XP</span>
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <TrendingUp className="w-3 h-3 text-accent" />
+          <span className="text-[10px] text-muted-foreground">{xp.toLocaleString()} XP</span>
         </div>
-        <span className="text-xs font-medium text-primary">{rank}</span>
+        <span className="text-[10px] font-medium text-primary">{rank}</span>
       </div>
     </motion.div>
   );
