@@ -6,6 +6,7 @@ import { PlayingCard, CardSelector } from '@/components/PlayingCard';
 import { ActionRecommendation } from '@/components/ActionRecommendation';
 import { SessionStats, type SessionData } from '@/components/SessionStats';
 import { CardTracker } from '@/components/CardTracker';
+import { HitProbability } from '@/components/HitProbability';
 import { SideBetPrediction } from '@/components/SideBetPrediction';
 import { TableCards } from '@/components/TableCards';
 import { CameraScanner } from '@/components/CameraScanner';
@@ -306,7 +307,13 @@ export default function Index() {
 
             <AnimatePresence>{showAdvanced && (<>
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <div className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-3 uppercase tracking-wider">Side Bet Predictions</h3><SideBetPrediction prediction={sideBetPrediction} /></div>
+                <div className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-display font-bold text-primary uppercase tracking-wider">Side Bet Predictions</h3>
+                    {profile?.tier === 'free' && <span className="text-[8px] text-yellow-400 uppercase">Trial Feature</span>}
+                  </div>
+                  <SideBetPrediction prediction={sideBetPrediction} />
+                </div>
               </motion.div>
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 <div className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><TableCards onCardPlayed={handleTableCardPlayed} onCardRemoved={handleTableCardRemoved} /></div>
@@ -328,7 +335,25 @@ export default function Index() {
               </motion.div>
             )}
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Heat Index</h3><HeatIndex heat={heatIndex} trueCount={tableState.trueCount} /></motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Dealer Analysis</h3><DealerVolatility dealerUpcard={dealerUpcard} bustProbability={bustProbability} /></motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-display font-bold text-primary uppercase tracking-wider">Dealer Analysis</h3>
+                {profile?.tier === 'free' && <span className="text-[8px] text-yellow-400 uppercase">Trial</span>}
+              </div>
+              <DealerVolatility dealerUpcard={dealerUpcard} bustProbability={bustProbability} />
+            </motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.12 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-display font-bold text-primary uppercase tracking-wider">Hit Probability</h3>
+                {profile?.tier === 'free' && <span className="text-[8px] text-yellow-400 uppercase">Trial</span>}
+              </div>
+              <HitProbability 
+                deckState={deckState} 
+                currentTotal={total > 0 ? total : null} 
+                isSoft={soft} 
+                isPremium={profile?.tier !== 'free' || true} 
+              />
+            </motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><SessionStats session={session} onRecordResult={handleRecordResult} onReset={handleResetSession} /></motion.div>
           </div>

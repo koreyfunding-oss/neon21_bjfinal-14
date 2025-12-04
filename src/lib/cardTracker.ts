@@ -236,3 +236,104 @@ export function validateIntegrity(): boolean {
 export function resetDeck(numDecks: number = 6): DeckState {
   return createDeckState(numDecks);
 }
+
+// Hit probability calculations based on remaining deck composition
+export interface HitProbabilityResult {
+  handTotal: number;
+  bustProbability: number;
+  improveProbability: number;
+  perfectProbability: number; // Probability of getting exactly 21
+  recommendation: 'HIT' | 'RISKY' | 'AVOID';
+  bestOutcomes: { card: string; newTotal: number; probability: number }[];
+  worstOutcomes: { card: string; probability: number }[];
+}
+
+function getCardNumericValue(card: string): number[] {
+  if (card === 'A') return [1, 11];
+  if (['J', 'Q', 'K'].includes(card)) return [10];
+  return [parseInt(card)];
+}
+
+export function calculateHitProbability(state: DeckState, currentTotal: number, isSoft: boolean): HitProbabilityResult {
+  const total = getTotalRemaining(state);
+  if (total === 0) {
+    return {
+      handTotal: currentTotal,
+      bustProbability: 0,
+      improveProbability: 0,
+      perfectProbability: 0,
+      recommendation: 'AVOID',
+      bestOutcomes: [],
+      worstOutcomes: []
+    };
+  }
+
+  let bustCount = 0;
+  let improveCount = 0;
+  let perfectCount = 0;
+  const bestOutcomes: { card: string; newTotal: number; probability: number }[] = [];
+  const worstOutcomes: { card: string; probability: number }[] = [];
+
+  for (const card of CARD_VALUES) {
+    const cardCount = state.remaining[card];
+    if (cardCount <= 0) continue;
+
+    const probability = (cardCount / total) * 100;
+    const values = getCardNumericValue(card);
+    
+    // Calculate new total after hitting this card
+    let newTotal = currentTotal;
+    let wouldBust = false;
+    
+    if (isSoft && currentTotal <= 11) {
+      // Soft hand - can't bust with one card
+      newTotal = currentTotal + Math.min(...values);
+      if (newTotal > 21) newTotal = currentTotal + 1; // Ace counted as 1
+    } else {
+      newTotal = currentTotal + Math.min(...values);
+      wouldBust = newTotal > 21;
+    }
+
+    if (wouldBust) {
+      bustCount += cardCount;
+      worstOutcomes.push({ card, probability });
+    } else {
+      if (newTotal === 21) {
+        perfectCount += cardCount;
+        bestOutcomes.push({ card, newTotal, probability });
+      } else if (newTotal > currentTotal && newTotal <= 21) {
+        improveCount += cardCount;
+        bestOutcomes.push({ card, newTotal, probability });
+      }
+    }
+  }
+
+  const bustProbability = (bustCount / total) * 100;
+  const improveProbability = (improveCount / total) * 100;
+  const perfectProbability = (perfectCount / total) * 100;
+
+  // Determine recommendation
+  let recommendation: 'HIT' | 'RISKY' | 'AVOID' = 'HIT';
+  if (bustProbability > 60) recommendation = 'AVOID';
+  else if (bustProbability > 40) recommendation = 'RISKY';
+
+  // Sort outcomes by probability
+  bestOutcomes.sort((a, b) => b.probability - a.probability);
+  worstOutcomes.sort((a, b) => b.probability - a.probability);
+
+  return {
+    handTotal: currentTotal,
+    bustProbability,
+    improveProbability: improveProbability + perfectProbability,
+    perfectProbability,
+    recommendation,
+    bestOutcomes: bestOutcomes.slice(0, 4),
+    worstOutcomes: worstOutcomes.slice(0, 4)
+  };
+}
+
+// Calculate hit probabilities for common decision points
+export function getHitProbabilityMatrix(state: DeckState): HitProbabilityResult[] {
+  const decisionTotals = [12, 13, 14, 15, 16, 17, 18, 19];
+  return decisionTotals.map(total => calculateHitProbability(state, total, false));
+}
