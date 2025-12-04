@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Target, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TrendingUp, TrendingDown, Target, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react';
 import { DeckState, calculateHitProbability, type HitProbabilityResult } from '@/lib/cardTracker';
 import { cn } from '@/lib/utils';
 
@@ -10,15 +11,53 @@ interface HitProbabilityProps {
   isPremium: boolean;
 }
 
-export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: HitProbabilityProps) {
-  // Common decision points to show
-  const decisionTotals = [12, 13, 14, 15, 16, 17, 18, 19];
-  
-  const probabilities = decisionTotals.map(total => 
-    calculateHitProbability(deckState, total, total <= 11)
-  );
+interface ProbabilityWithDelta extends HitProbabilityResult {
+  bustDelta: number;
+  improveDelta: number;
+}
 
-  // Current hand analysis if available
+export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: HitProbabilityProps) {
+  const decisionTotals = [12, 13, 14, 15, 16, 17, 18, 19];
+  const prevProbsRef = useRef<Map<number, { bust: number; improve: number }>>(new Map());
+  const [probsWithDelta, setProbsWithDelta] = useState<ProbabilityWithDelta[]>([]);
+  const [lastCardEffect, setLastCardEffect] = useState<string | null>(null);
+
+  // Calculate probabilities and deltas when deck state changes
+  useEffect(() => {
+    const newProbs = decisionTotals.map(total => {
+      const prob = calculateHitProbability(deckState, total, total <= 11);
+      const prevProb = prevProbsRef.current.get(total);
+      
+      const bustDelta = prevProb ? prob.bustProbability - prevProb.bust : 0;
+      const improveDelta = prevProb ? prob.improveProbability - prevProb.improve : 0;
+      
+      return {
+        ...prob,
+        bustDelta,
+        improveDelta
+      };
+    });
+
+    setProbsWithDelta(newProbs);
+
+    // Update previous probabilities for next comparison
+    newProbs.forEach(prob => {
+      prevProbsRef.current.set(prob.handTotal, {
+        bust: prob.bustProbability,
+        improve: prob.improveProbability
+      });
+    });
+
+    // Show last card effect
+    if (deckState.played.length > 0) {
+      const lastCard = deckState.played[deckState.played.length - 1];
+      setLastCardEffect(lastCard);
+      const timer = setTimeout(() => setLastCardEffect(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [deckState]);
+
+  // Current hand analysis
   const currentAnalysis = currentTotal && currentTotal >= 12 && currentTotal <= 21
     ? calculateHitProbability(deckState, currentTotal, isSoft)
     : null;
@@ -39,6 +78,24 @@ export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: H
     }
   };
 
+  const getDeltaIndicator = (delta: number, isPositive: boolean) => {
+    if (Math.abs(delta) < 0.1) return null;
+    const color = isPositive 
+      ? (delta > 0 ? 'text-green-400' : 'text-red-400')
+      : (delta > 0 ? 'text-red-400' : 'text-green-400');
+    
+    return (
+      <motion.span
+        initial={{ opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={cn('text-[8px] flex items-center', color)}
+      >
+        {delta > 0 ? <ArrowUp className="w-2 h-2" /> : <ArrowDown className="w-2 h-2" />}
+        {Math.abs(delta).toFixed(1)}
+      </motion.span>
+    );
+  };
+
   if (!isPremium) {
     return (
       <div className="text-center py-4">
@@ -50,6 +107,22 @@ export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: H
 
   return (
     <div className="space-y-4">
+      {/* Last Card Effect Indicator */}
+      <AnimatePresence>
+        {lastCardEffect && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-center"
+          >
+            <p className="text-[10px] text-primary">
+              Card <span className="font-bold">{lastCardEffect}</span> played — odds updated
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Current Hand Analysis */}
       {currentAnalysis && (
         <motion.div
@@ -88,7 +161,6 @@ export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: H
             </div>
           </div>
 
-          {/* Best cards to hit */}
           {currentAnalysis.bestOutcomes.length > 0 && (
             <div className="mt-3 pt-2 border-t border-border/50">
               <p className="text-[10px] text-muted-foreground mb-1">Best cards:</p>
@@ -104,15 +176,19 @@ export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: H
         </motion.div>
       )}
 
-      {/* Decision Matrix */}
+      {/* Decision Matrix with Real-time Deltas */}
       <div>
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Hit Probability Matrix</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Hit Probability Matrix</p>
+          <p className="text-[9px] text-muted-foreground">{deckState.played.length} cards tracked</p>
+        </div>
         <div className="grid grid-cols-4 gap-1">
-          {probabilities.map((prob) => (
+          {probsWithDelta.map((prob) => (
             <motion.div
               key={prob.handTotal}
+              layout
               className={cn(
-                'p-2 rounded text-center border transition-all',
+                'p-2 rounded text-center border transition-all relative',
                 prob.handTotal === currentTotal 
                   ? 'border-primary bg-primary/10' 
                   : 'border-border bg-secondary/30 hover:border-primary/50'
@@ -121,18 +197,36 @@ export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: H
             >
               <p className="text-xs font-display font-bold text-foreground">{prob.handTotal}</p>
               <div className="mt-1 space-y-0.5">
-                <div className="flex justify-between text-[9px]">
+                <div className="flex justify-between items-center text-[9px]">
                   <span className="text-green-400">↑</span>
-                  <span className="text-green-400">{prob.improveProbability.toFixed(0)}%</span>
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-green-400">{prob.improveProbability.toFixed(0)}%</span>
+                    {getDeltaIndicator(prob.improveDelta, true)}
+                  </div>
                 </div>
-                <div className="flex justify-between text-[9px]">
+                <div className="flex justify-between items-center text-[9px]">
                   <span className="text-red-400">✗</span>
-                  <span className="text-red-400">{prob.bustProbability.toFixed(0)}%</span>
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-red-400">{prob.bustProbability.toFixed(0)}%</span>
+                    {getDeltaIndicator(prob.bustDelta, false)}
+                  </div>
                 </div>
               </div>
               <div className={cn('mt-1 text-[8px] font-bold uppercase', getRecommendationColor(prob.recommendation))}>
                 {prob.recommendation}
               </div>
+
+              {/* Highlight significant changes */}
+              <AnimatePresence>
+                {(Math.abs(prob.bustDelta) > 1 || Math.abs(prob.improveDelta) > 1) && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary animate-pulse"
+                  />
+                )}
+              </AnimatePresence>
             </motion.div>
           ))}
         </div>
@@ -140,8 +234,9 @@ export function HitProbability({ deckState, currentTotal, isSoft, isPremium }: H
 
       {/* Legend */}
       <div className="flex justify-center gap-4 text-[10px] text-muted-foreground">
-        <span><span className="text-green-400">↑</span> Improve chance</span>
-        <span><span className="text-red-400">✗</span> Bust chance</span>
+        <span><span className="text-green-400">↑</span> Improve</span>
+        <span><span className="text-red-400">✗</span> Bust</span>
+        <span><ArrowUp className="w-2 h-2 inline text-green-400" /> Better odds</span>
       </div>
     </div>
   );
