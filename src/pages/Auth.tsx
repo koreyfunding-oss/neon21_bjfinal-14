@@ -6,13 +6,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { z } from "zod";
 import neon21Logo from "@/assets/neon21-logo.png";
+
+// Input validation schema
+const authSchema = z.object({
+  email: z.string().email("Please enter a valid email address").max(255),
+  password: z.string().min(6, "Password must be at least 6 characters").max(72),
+});
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,31 +40,61 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const validateInputs = () => {
+    try {
+      authSchema.parse({ email, password });
+      setErrors({});
+      return true;
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        const fieldErrors: { email?: string; password?: string } = {};
+        err.errors.forEach((e) => {
+          if (e.path[0] === "email") fieldErrors.email = e.message;
+          if (e.path[0] === "password") fieldErrors.password = e.message;
+        });
+        setErrors(fieldErrors);
+      }
+      return false;
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateInputs()) return;
+    
     setLoading(true);
 
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
         if (error) throw error;
         toast({ title: "Welcome back, Syndicate member" });
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
           },
         });
         if (error) throw error;
-        toast({ title: "Account created successfully" });
+        toast({ title: "Account created successfully! You can now sign in." });
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Authentication failed";
+      let message = "Authentication failed";
+      if (error instanceof Error) {
+        if (error.message.includes("User already registered")) {
+          message = "This email is already registered. Please sign in instead.";
+        } else if (error.message.includes("Invalid login credentials")) {
+          message = "Invalid email or password. Please try again.";
+        } else {
+          message = error.message;
+        }
+      }
       toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -91,11 +129,12 @@ const Auth = () => {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: undefined })); }}
                 placeholder="agent@syndicate.io"
                 required
-                className="bg-background/50 border-border focus:border-primary"
+                className={`bg-background/50 border-border focus:border-primary ${errors.email ? 'border-destructive' : ''}`}
               />
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
 
             <div className="space-y-2">
@@ -104,12 +143,13 @@ const Auth = () => {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: undefined })); }}
                 placeholder="••••••••"
                 required
                 minLength={6}
-                className="bg-background/50 border-border focus:border-primary"
+                className={`bg-background/50 border-border focus:border-primary ${errors.password ? 'border-destructive' : ''}`}
               />
+              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
             </div>
 
             <Button
