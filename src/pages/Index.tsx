@@ -16,6 +16,7 @@ import { AggressionSelector } from '@/components/AggressionSelector';
 import { DealerVolatility } from '@/components/DealerVolatility';
 import { InsuranceAnalysis } from '@/components/InsuranceAnalysis';
 import { BetSizing } from '@/components/BetSizing';
+import { ProfitStrategy, type BettingStrategy } from '@/components/ProfitStrategy';
 import { SoundToggle } from '@/components/SoundToggle';
 import { SubscriptionBadge } from '@/components/SubscriptionBadge';
 import { TrialCountdown } from '@/components/TrialCountdown';
@@ -66,7 +67,27 @@ export default function Index() {
   const [cameraActive, setCameraActive] = useState(false);
   const [turboMode, setTurboMode] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
+  const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
   const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled } = useSoundEffects();
+
+  // Calculate current bet based on strategy
+  const currentBet = useMemo(() => {
+    const streak = session.currentStreak;
+    switch (bettingStrategy) {
+      case 'martingale':
+        if (streak < 0) return baseUnit * Math.min(Math.pow(2, Math.abs(streak)), 8);
+        return baseUnit;
+      case 'paroli':
+        if (streak > 0 && streak < 3) return baseUnit * Math.pow(2, streak);
+        return baseUnit;
+      case '1-3-2-6':
+        const sequence = [1, 3, 2, 6];
+        if (streak > 0 && streak <= 4) return baseUnit * sequence[(streak - 1) % 4];
+        return baseUnit;
+      default:
+        return baseUnit;
+    }
+  }, [bettingStrategy, baseUnit, session.currentStreak]);
 
   const isPremium = profile?.tier !== 'free';
 
@@ -411,7 +432,19 @@ export default function Index() {
               />
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><SessionStats session={session} onRecordResult={handleRecordResult} onReset={handleResetSession} /></motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.18 }} className="p-3 rounded-xl border border-primary/30 bg-card/80 backdrop-blur-sm">
+              <h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Profit Strategy</h3>
+              <ProfitStrategy
+                baseUnit={baseUnit}
+                currentBet={currentBet}
+                session={session}
+                trueCount={tableState.trueCount}
+                heatIndex={heatIndex}
+                activeStrategy={bettingStrategy}
+                onStrategyChange={setBettingStrategy}
+              />
+            </motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.22 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><SessionStats session={session} onRecordResult={handleRecordResult} onReset={handleResetSession} /></motion.div>
           </div>
         </div>
 
