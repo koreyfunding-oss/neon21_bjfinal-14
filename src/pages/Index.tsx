@@ -28,11 +28,13 @@ import {
   getTotalRemaining,
   type DeckState 
 } from '@/lib/cardTracker';
-import { analyzeCIS, calculateHeatIndex, type AggressionMode, type CISAnalysis } from '@/lib/cisEngine';
+import { calculateHeatIndex, type AggressionMode, type CISAnalysis } from '@/lib/cisEngine';
 import { initializeSecurity, generateWatermark } from '@/lib/security';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { cn } from '@/lib/utils';
 import { Shield, Eye, EyeOff, Settings, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const initialSession: SessionData = {
   wins: 0, losses: 0, pushes: 0, blackjacks: 0, currentStreak: 0, handsPlayed: 0,
@@ -40,7 +42,7 @@ const initialSession: SessionData = {
 
 export default function Index() {
   const navigate = useNavigate();
-  const { user, profile, loading, signOut, getUsageLimits, canUseCIS } = useAuth();
+  const { user, profile, loading, signOut, getUsageLimits, canUseCIS, refetchProfile } = useAuth();
   
   const [playerCards, setPlayerCards] = useState<string[]>([]);
   const [dealerUpcard, setDealerUpcard] = useState<string | null>(null);
@@ -81,13 +83,46 @@ export default function Index() {
   const heatIndex = useMemo(() => calculateHeatIndex(tableState), [tableState]);
   const sideBetPrediction = getSideBetPredictions(deckState, playerCards[0]);
 
+  // Call server-side CIS evaluation (enforces usage limits)
+  const callCISEvaluate = useCallback(async (cards: string[], dealer: string) => {
+    if (!canUseCIS()) {
+      toast.error('Daily CIS limit reached. Upgrade for unlimited access.');
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('cis-evaluate', {
+        body: {
+          player_cards: cards,
+          dealer_card: dealer,
+          aggression_mode: aggressionMode,
+          true_count: tableState.trueCount,
+          cards_seen: Math.round((1 - deckState.penetration) * numDecks * 52)
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.error === 'Daily CIS limit reached') {
+        toast.error('Daily CIS limit reached. Upgrade for unlimited access.');
+        refetchProfile();
+        return;
+      }
+      
+      setCisAnalysis(data as CISAnalysis);
+      refetchProfile(); // Update usage display
+    } catch (err) {
+      console.error('CIS evaluation error:', err);
+    }
+  }, [aggressionMode, tableState.trueCount, deckState.penetration, numDecks, canUseCIS, refetchProfile]);
+
   useEffect(() => {
     if (analysis && playerCards.length >= 2 && dealerUpcard) {
-      setCisAnalysis(analyzeCIS(playerCards, dealerUpcard, tableState, aggressionMode, analysis));
+      callCISEvaluate(playerCards, dealerUpcard);
     } else {
       setCisAnalysis(null);
     }
-  }, [analysis, playerCards, dealerUpcard, tableState, aggressionMode]);
+  }, [analysis, playerCards, dealerUpcard]);
 
   const handleCardSelect = useCallback((value: string) => {
     playSound('cardSelect');
