@@ -1,33 +1,61 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CameraOff, Loader2, AlertCircle } from 'lucide-react';
+import { Camera, CameraOff, Loader2, AlertCircle, Trophy, XCircle, Minus, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-interface ScanResult {
+interface SideBets {
+  perfect_pair: boolean;
+  colored_pair: boolean;
+  mixed_pair: boolean;
+  flush: boolean;
+  straight: boolean;
+  three_of_kind: boolean;
+  straight_flush: boolean;
+  suited_trips: boolean;
+}
+
+interface DetectedEvents {
+  player_blackjack: boolean;
+  dealer_blackjack: boolean;
+  player_bust: boolean;
+  push: boolean;
+  win_detected: boolean;
+  loss_detected: boolean;
+}
+
+export interface ScanResult {
   player_cards: string[];
   dealer_card: string | null;
+  dealer_hole_card: string | null;
   other_cards: string[];
   confidence: 'high' | 'medium' | 'low' | 'none';
   notes: string;
+  hand_outcome: 'win' | 'loss' | 'push' | 'blackjack' | 'bust' | null;
+  side_bets: SideBets;
+  detected_events: DetectedEvents;
 }
 
 interface CameraScannerProps {
   onCardsDetected: (result: ScanResult) => void;
+  onOutcomeDetected?: (outcome: 'win' | 'loss' | 'push' | 'blackjack') => void;
+  onSideBetWin?: (betType: string) => void;
   isActive: boolean;
   onToggle: () => void;
 }
 
-export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraScannerProps) {
+export function CameraScanner({ onCardsDetected, onOutcomeDetected, onSideBetWin, isActive, onToggle }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastOutcomeRef = useRef<string | null>(null);
   
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [scanCount, setScanCount] = useState(0);
+  const [detectedSideBets, setDetectedSideBets] = useState<string[]>([]);
 
   const startCamera = useCallback(async () => {
     try {
@@ -55,6 +83,7 @@ export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraSca
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    lastOutcomeRef.current = null;
   }, []);
 
   const captureAndScan = useCallback(async () => {
@@ -85,25 +114,85 @@ export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraSca
       if (data && data.confidence !== 'none') {
         setLastResult(data);
         onCardsDetected(data);
+
+        // Handle outcome detection (prevent duplicate triggers)
+        const outcomeKey = `${data.hand_outcome}-${data.player_cards.join(',')}-${data.dealer_card}`;
+        if (data.hand_outcome && outcomeKey !== lastOutcomeRef.current && onOutcomeDetected) {
+          lastOutcomeRef.current = outcomeKey;
+          
+          if (data.detected_events?.player_blackjack || data.hand_outcome === 'blackjack') {
+            onOutcomeDetected('blackjack');
+          } else if (data.hand_outcome === 'win' || data.detected_events?.win_detected) {
+            onOutcomeDetected('win');
+          } else if (data.hand_outcome === 'loss' || data.detected_events?.loss_detected || data.detected_events?.player_bust) {
+            onOutcomeDetected('loss');
+          } else if (data.hand_outcome === 'push' || data.detected_events?.push) {
+            onOutcomeDetected('push');
+          }
+        }
+
+        // Handle side bet wins
+        if (data.side_bets && onSideBetWin) {
+          const newSideBets: string[] = [];
+          
+          if (data.side_bets.perfect_pair) newSideBets.push('Perfect Pair');
+          if (data.side_bets.colored_pair) newSideBets.push('Colored Pair');
+          if (data.side_bets.mixed_pair) newSideBets.push('Mixed Pair');
+          if (data.side_bets.suited_trips) newSideBets.push('Suited Trips');
+          if (data.side_bets.straight_flush) newSideBets.push('Straight Flush');
+          if (data.side_bets.three_of_kind) newSideBets.push('Three of a Kind');
+          if (data.side_bets.straight) newSideBets.push('Straight');
+          if (data.side_bets.flush) newSideBets.push('Flush');
+          
+          // Only trigger if new side bets detected
+          const newDetections = newSideBets.filter(bet => !detectedSideBets.includes(bet));
+          if (newDetections.length > 0) {
+            setDetectedSideBets(prev => [...prev, ...newDetections]);
+            newDetections.forEach(bet => onSideBetWin(bet));
+          }
+        }
       }
     } catch (err) {
       console.error('Scan error:', err);
     } finally {
       setIsScanning(false);
     }
-  }, [isScanning, onCardsDetected]);
+  }, [isScanning, onCardsDetected, onOutcomeDetected, onSideBetWin, detectedSideBets]);
+
+  // Reset detected side bets when camera is toggled off
+  useEffect(() => {
+    if (!isActive) {
+      setDetectedSideBets([]);
+      lastOutcomeRef.current = null;
+    }
+  }, [isActive]);
 
   useEffect(() => {
     if (isActive) {
       startCamera();
-      // Scan every 1 second for continuous mode
-      intervalRef.current = setInterval(captureAndScan, 1000);
+      intervalRef.current = setInterval(captureAndScan, 1500);
     } else {
       stopCamera();
     }
 
     return () => stopCamera();
   }, [isActive, startCamera, stopCamera, captureAndScan]);
+
+  const getActiveSideBets = (sideBets: SideBets | undefined) => {
+    if (!sideBets) return [];
+    const active: { name: string; color: string }[] = [];
+    
+    if (sideBets.suited_trips) active.push({ name: 'Suited Trips', color: 'text-yellow-400 bg-yellow-500/20' });
+    if (sideBets.straight_flush) active.push({ name: 'Straight Flush', color: 'text-purple-400 bg-purple-500/20' });
+    if (sideBets.three_of_kind) active.push({ name: '3 of a Kind', color: 'text-orange-400 bg-orange-500/20' });
+    if (sideBets.straight) active.push({ name: 'Straight', color: 'text-blue-400 bg-blue-500/20' });
+    if (sideBets.flush) active.push({ name: 'Flush', color: 'text-cyan-400 bg-cyan-500/20' });
+    if (sideBets.perfect_pair) active.push({ name: 'Perfect Pair', color: 'text-green-400 bg-green-500/20' });
+    if (sideBets.colored_pair) active.push({ name: 'Colored Pair', color: 'text-pink-400 bg-pink-500/20' });
+    if (sideBets.mixed_pair) active.push({ name: 'Mixed Pair', color: 'text-gray-400 bg-gray-500/20' });
+    
+    return active;
+  };
 
   return (
     <div className="space-y-3">
@@ -114,7 +203,7 @@ export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraSca
             className={cn(
               'flex items-center gap-2 px-3 py-2 rounded-lg font-display text-sm uppercase tracking-wider transition-all',
               isActive 
-                ? 'bg-destructive text-destructive-foreground shadow-neon-red' 
+                ? 'bg-destructive text-destructive-foreground' 
                 : 'bg-primary text-primary-foreground shadow-neon'
             )}
           >
@@ -183,10 +272,11 @@ export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraSca
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-2 p-2 rounded-lg bg-primary/10 border border-primary/30"
+                className="mt-2 p-2 rounded-lg bg-primary/10 border border-primary/30 space-y-2"
               >
+                {/* Card Detection */}
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Last Detection:</span>
+                  <span className="text-muted-foreground">Cards Detected:</span>
                   <span className={cn(
                     'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase',
                     lastResult.confidence === 'high' ? 'bg-green-500/20 text-green-400' :
@@ -196,7 +286,7 @@ export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraSca
                     {lastResult.confidence}
                   </span>
                 </div>
-                <div className="mt-1 text-xs">
+                <div className="text-xs">
                   {lastResult.player_cards.length > 0 && (
                     <span className="text-foreground">
                       Player: <span className="text-primary font-bold">{lastResult.player_cards.join(', ')}</span>
@@ -208,6 +298,44 @@ export function CameraScanner({ onCardsDetected, isActive, onToggle }: CameraSca
                     </span>
                   )}
                 </div>
+
+                {/* Hand Outcome */}
+                {lastResult.hand_outcome && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                    {lastResult.hand_outcome === 'win' || lastResult.hand_outcome === 'blackjack' ? (
+                      <Trophy className="w-4 h-4 text-green-400" />
+                    ) : lastResult.hand_outcome === 'loss' || lastResult.hand_outcome === 'bust' ? (
+                      <XCircle className="w-4 h-4 text-red-400" />
+                    ) : (
+                      <Minus className="w-4 h-4 text-yellow-400" />
+                    )}
+                    <span className={cn(
+                      'text-xs font-bold uppercase',
+                      lastResult.hand_outcome === 'win' || lastResult.hand_outcome === 'blackjack' ? 'text-green-400' :
+                      lastResult.hand_outcome === 'loss' || lastResult.hand_outcome === 'bust' ? 'text-red-400' :
+                      'text-yellow-400'
+                    )}>
+                      {lastResult.hand_outcome === 'blackjack' ? 'BLACKJACK!' : lastResult.hand_outcome.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Side Bets Detected */}
+                {getActiveSideBets(lastResult.side_bets).length > 0 && (
+                  <div className="pt-1 border-t border-border/50">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Sparkles className="w-3 h-3 text-yellow-400" />
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Side Bets Won:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {getActiveSideBets(lastResult.side_bets).map(({ name, color }) => (
+                        <span key={name} className={cn('px-1.5 py-0.5 rounded text-[10px] font-bold', color)}>
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </motion.div>

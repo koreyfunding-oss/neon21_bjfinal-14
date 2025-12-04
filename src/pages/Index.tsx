@@ -9,7 +9,7 @@ import { CardTracker } from '@/components/CardTracker';
 import { HitProbability } from '@/components/HitProbability';
 import { SideBetPrediction } from '@/components/SideBetPrediction';
 import { TableCards } from '@/components/TableCards';
-import { CameraScanner } from '@/components/CameraScanner';
+import { CameraScanner, type ScanResult } from '@/components/CameraScanner';
 import { HeatIndex } from '@/components/HeatIndex';
 import { AggressionSelector } from '@/components/AggressionSelector';
 import { DealerVolatility } from '@/components/DealerVolatility';
@@ -165,7 +165,7 @@ export default function Index() {
   const handleTableCardPlayed = useCallback((card: string) => setDeckState(prev => trackCard(prev, card)), []);
   const handleTableCardRemoved = useCallback((card: string) => setDeckState(prev => untrackCard(prev, card)), []);
 
-  const handleCardsDetected = useCallback((result: { player_cards: string[]; dealer_card: string | null; other_cards: string[] }) => {
+  const handleCardsDetected = useCallback((result: ScanResult) => {
     playSound('cardSelect');
     // Clear existing cards first
     playerCards.forEach(card => setDeckState(prev => untrackCard(prev, card)));
@@ -181,6 +181,11 @@ export default function Index() {
       setDeckState(prev => trackCard(prev, result.dealer_card!));
     } else {
       setDealerUpcard(null);
+    }
+    
+    // Track dealer hole card if revealed
+    if (result.dealer_hole_card) {
+      setDeckState(prev => trackCard(prev, result.dealer_hole_card!));
     }
     
     // Track other table cards
@@ -208,6 +213,21 @@ export default function Index() {
     });
     handleClearHand();
   }, [handleClearHand, playSound, playWinFanfare, playBlackjackFanfare]);
+
+  const handleScanOutcome = useCallback((outcome: 'win' | 'loss' | 'push' | 'blackjack') => {
+    handleRecordResult(outcome);
+    toast.success(`Hand recorded: ${outcome.toUpperCase()}`, {
+      description: 'Detected from camera scan'
+    });
+  }, [handleRecordResult]);
+
+  const handleSideBetWin = useCallback((betType: string) => {
+    toast.success(`Side Bet Win: ${betType}!`, {
+      description: 'Detected from table scan',
+      duration: 4000,
+    });
+    playSound('cardSelect');
+  }, [playSound]);
 
   const handleResetSession = useCallback(() => { setSession(initialSession); setDeckState(createDeckState(numDecks)); }, [numDecks]);
   const { total, soft } = playerCards.length >= 1 ? calculateHandTotal(playerCards) : { total: 0, soft: false };
@@ -273,6 +293,8 @@ export default function Index() {
               )}
               <CameraScanner 
                 onCardsDetected={handleCardsDetected} 
+                onOutcomeDetected={handleScanOutcome}
+                onSideBetWin={handleSideBetWin}
                 isActive={cameraActive} 
                 onToggle={() => setCameraActive(!cameraActive)} 
               />
