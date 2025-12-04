@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CameraOff, Loader2, AlertCircle, Trophy, XCircle, Minus, Sparkles } from 'lucide-react';
+import { Camera, CameraOff, Loader2, AlertCircle, Trophy, XCircle, Minus, Sparkles, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -42,9 +42,21 @@ interface CameraScannerProps {
   onSideBetWin?: (betType: string) => void;
   isActive: boolean;
   onToggle: () => void;
+  isPremium?: boolean;
+  turboMode?: boolean;
+  onTurboToggle?: () => void;
 }
 
-export function CameraScanner({ onCardsDetected, onOutcomeDetected, onSideBetWin, isActive, onToggle }: CameraScannerProps) {
+export function CameraScanner({ 
+  onCardsDetected, 
+  onOutcomeDetected, 
+  onSideBetWin, 
+  isActive, 
+  onToggle,
+  isPremium = false,
+  turboMode = false,
+  onTurboToggle
+}: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -56,6 +68,9 @@ export function CameraScanner({ onCardsDetected, onOutcomeDetected, onSideBetWin
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [scanCount, setScanCount] = useState(0);
   const [detectedSideBets, setDetectedSideBets] = useState<string[]>([]);
+
+  // Scan interval: 500ms for turbo, 1500ms for normal
+  const scanInterval = turboMode ? 500 : 1500;
 
   const startCamera = useCallback(async () => {
     try {
@@ -170,13 +185,13 @@ export function CameraScanner({ onCardsDetected, onOutcomeDetected, onSideBetWin
   useEffect(() => {
     if (isActive) {
       startCamera();
-      intervalRef.current = setInterval(captureAndScan, 1500);
+      intervalRef.current = setInterval(captureAndScan, scanInterval);
     } else {
       stopCamera();
     }
 
     return () => stopCamera();
-  }, [isActive, startCamera, stopCamera, captureAndScan]);
+  }, [isActive, startCamera, stopCamera, captureAndScan, scanInterval]);
 
   const getActiveSideBets = (sideBets: SideBets | undefined) => {
     if (!sideBets) return [];
@@ -196,7 +211,7 @@ export function CameraScanner({ onCardsDetected, onOutcomeDetected, onSideBetWin
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <button
             onClick={onToggle}
@@ -208,20 +223,44 @@ export function CameraScanner({ onCardsDetected, onOutcomeDetected, onSideBetWin
             )}
           >
             {isActive ? <CameraOff className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
-            {isActive ? 'Stop Scan' : 'Start Scan'}
+            {isActive ? 'Stop' : 'Scan'}
           </button>
+          
+          {/* Turbo Mode Toggle - Premium Only */}
+          {isPremium && onTurboToggle && (
+            <button
+              onClick={onTurboToggle}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-2 rounded-lg font-display text-xs uppercase tracking-wider transition-all',
+                turboMode 
+                  ? 'bg-yellow-500 text-yellow-950 shadow-[0_0_15px_hsl(40_100%_50%/0.5)]' 
+                  : 'bg-secondary text-muted-foreground hover:text-foreground border border-border'
+              )}
+            >
+              <Zap className={cn('w-3.5 h-3.5', turboMode && 'animate-pulse')} />
+              Turbo
+            </button>
+          )}
+          
           {isScanning && (
             <div className="flex items-center gap-1.5 text-xs text-primary">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Scanning...
+              {turboMode ? 'TURBO' : 'Scanning'}
             </div>
           )}
         </div>
-        {isActive && (
-          <span className="text-xs text-muted-foreground">
-            Scans: {scanCount}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {turboMode && isActive && (
+            <span className="text-[10px] text-yellow-400 uppercase tracking-wider animate-pulse">
+              ⚡ 500ms
+            </span>
+          )}
+          {isActive && (
+            <span className="text-xs text-muted-foreground">
+              #{scanCount}
+            </span>
+          )}
+        </div>
       </div>
 
       <AnimatePresence>
