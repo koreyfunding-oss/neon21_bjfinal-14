@@ -13,6 +13,7 @@ import { CameraScanner } from '@/components/CameraScanner';
 import { HeatIndex } from '@/components/HeatIndex';
 import { AggressionSelector } from '@/components/AggressionSelector';
 import { DealerVolatility } from '@/components/DealerVolatility';
+import { InsuranceAnalysis } from '@/components/InsuranceAnalysis';
 import { BetSizing } from '@/components/BetSizing';
 import { SoundToggle } from '@/components/SoundToggle';
 import { SubscriptionBadge } from '@/components/SubscriptionBadge';
@@ -304,6 +305,13 @@ export default function Index() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm card-glow">
               <ActionRecommendation analysis={analysis} playerTotal={total} isSoft={soft} cisOverride={cisAnalysis?.cisOverride} heatIndex={heatIndex} riskLevel={cisAnalysis?.riskLevel || 'medium'} />
             </motion.div>
+
+            {/* Insurance Analysis - shows when dealer has Ace */}
+            <InsuranceAnalysis 
+              deckState={deckState} 
+              dealerUpcard={dealerUpcard} 
+              isPremium={profile?.tier !== 'free' || true}
+            />
 
             <AnimatePresence>{showAdvanced && (<>
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
