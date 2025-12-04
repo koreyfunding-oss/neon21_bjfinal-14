@@ -15,6 +15,7 @@ import { DealerVolatility } from '@/components/DealerVolatility';
 import { BetSizing } from '@/components/BetSizing';
 import { SoundToggle } from '@/components/SoundToggle';
 import { SubscriptionBadge } from '@/components/SubscriptionBadge';
+import { TrialCountdown } from '@/components/TrialCountdown';
 import { UsageIndicator } from '@/components/UsageIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { analyzeHand, calculateHandTotal, getDealerBustProbability, type HandAnalysis } from '@/lib/blackjackStrategy';
@@ -215,6 +216,7 @@ export default function Index() {
       <div className="fixed inset-0 pointer-events-none"><div className="scan-line absolute inset-0" /></div>
       <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
         {profile && <SubscriptionBadge tier={profile.tier} />}
+        {profile?.tier === 'free' && <TrialCountdown createdAt={profile.created_at} />}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 backdrop-blur-sm">
           <Shield className="w-3 h-3 text-green-400" /><span className="text-[10px] text-green-400 font-mono">{securityBadge}</span>
         </div>
