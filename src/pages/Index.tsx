@@ -8,6 +8,7 @@ import { SessionStats, type SessionData } from '@/components/SessionStats';
 import { CardTracker } from '@/components/CardTracker';
 import { SideBetPrediction } from '@/components/SideBetPrediction';
 import { TableCards } from '@/components/TableCards';
+import { CameraScanner } from '@/components/CameraScanner';
 import { HeatIndex } from '@/components/HeatIndex';
 import { AggressionSelector } from '@/components/AggressionSelector';
 import { DealerVolatility } from '@/components/DealerVolatility';
@@ -58,6 +59,7 @@ export default function Index() {
   const [baseUnit, setBaseUnit] = useState(25);
   const [securityBadge] = useState(() => generateWatermark());
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [cameraActive, setCameraActive] = useState(false);
   const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled } = useSoundEffects();
 
   useEffect(() => { initializeSecurity(); }, []);
@@ -160,6 +162,33 @@ export default function Index() {
   const handleTableCardPlayed = useCallback((card: string) => setDeckState(prev => trackCard(prev, card)), []);
   const handleTableCardRemoved = useCallback((card: string) => setDeckState(prev => untrackCard(prev, card)), []);
 
+  const handleCardsDetected = useCallback((result: { player_cards: string[]; dealer_card: string | null; other_cards: string[] }) => {
+    playSound('cardSelect');
+    // Clear existing cards first
+    playerCards.forEach(card => setDeckState(prev => untrackCard(prev, card)));
+    if (dealerUpcard) setDeckState(prev => untrackCard(prev, dealerUpcard));
+    
+    // Set new detected cards
+    const newPlayerCards = result.player_cards || [];
+    setPlayerCards(newPlayerCards);
+    newPlayerCards.forEach(card => setDeckState(prev => trackCard(prev, card)));
+    
+    if (result.dealer_card) {
+      setDealerUpcard(result.dealer_card);
+      setDeckState(prev => trackCard(prev, result.dealer_card!));
+    } else {
+      setDealerUpcard(null);
+    }
+    
+    // Track other table cards
+    result.other_cards?.forEach(card => setDeckState(prev => trackCard(prev, card)));
+    
+    // Analyze if we have enough cards
+    if (newPlayerCards.length >= 2 && result.dealer_card) {
+      setAnalysis(analyzeHand(newPlayerCards, result.dealer_card));
+    }
+  }, [playerCards, dealerUpcard, playSound]);
+
   const handleRecordResult = useCallback((result: 'win' | 'loss' | 'push' | 'blackjack') => {
     if (result === 'blackjack') playBlackjackFanfare();
     else if (result === 'win') playWinFanfare();
@@ -233,7 +262,12 @@ export default function Index() {
         <div className="grid lg:grid-cols-[1fr_320px] gap-4">
           <div className="space-y-4">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm card-glow">
-              <div className="flex gap-2 mb-4">
+              <CameraScanner 
+                onCardsDetected={handleCardsDetected} 
+                isActive={cameraActive} 
+                onToggle={() => setCameraActive(!cameraActive)} 
+              />
+              <div className="flex gap-2 mb-4 mt-4">
                 <button onClick={() => setActiveInput('player')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'player' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Your Hand {playerCards.length > 0 && `(${playerCards.length})`}</button>
                 <button onClick={() => setActiveInput('dealer')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'dealer' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Dealer {dealerUpcard && `(${dealerUpcard})`}</button>
               </div>
