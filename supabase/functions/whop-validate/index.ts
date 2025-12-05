@@ -112,20 +112,42 @@ serve(async (req) => {
       }
     }
 
-    // Update user profile with subscription tier
-    const { data: profile, error: profileError } = await supabaseClient
+    // Get the profile first
+    const { data: profile, error: profileFetchError } = await supabaseClient
       .from("profiles")
-      .update({
-        tier: highestTier,
-        whop_id: whopId,
-        device_fingerprint: device_fingerprint || null,
-      })
+      .select("id")
       .eq("user_id", user.id)
-      .select()
       .single();
+
+    if (profileFetchError || !profile) {
+      console.error("Profile fetch error:", profileFetchError);
+      return new Response(JSON.stringify({ error: "Profile not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Update user profile tier
+    const { error: profileError } = await supabaseClient
+      .from("profiles")
+      .update({ tier: highestTier })
+      .eq("user_id", user.id);
 
     if (profileError) {
       console.error("Profile update error:", profileError);
+    }
+
+    // Update sensitive data in profile_secrets (server-side only table)
+    const { error: secretsError } = await supabaseClient
+      .from("profile_secrets")
+      .upsert({
+        profile_id: profile.id,
+        whop_id: whopId,
+        device_fingerprint: device_fingerprint || null,
+      }, { onConflict: "profile_id" });
+
+    if (secretsError) {
+      console.error("Profile secrets update error:", secretsError);
     }
 
     // Get usage limits based on tier
@@ -135,9 +157,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         tier: highestTier,
-        whop_id: whopId,
         limits: usageLimits,
-        profile,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

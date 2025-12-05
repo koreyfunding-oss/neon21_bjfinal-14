@@ -58,12 +58,46 @@ export type Database = {
           },
         ]
       }
+      profile_secrets: {
+        Row: {
+          created_at: string
+          device_fingerprint: string | null
+          id: string
+          profile_id: string
+          updated_at: string
+          whop_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint?: string | null
+          id?: string
+          profile_id: string
+          updated_at?: string
+          whop_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string | null
+          id?: string
+          profile_id?: string
+          updated_at?: string
+          whop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_secrets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
           daily_cis_used: number
           daily_sidebet_used: number
-          device_fingerprint: string | null
           id: string
           last_reset_date: string | null
           rank: string | null
@@ -71,14 +105,12 @@ export type Database = {
           total_cis_runs: number
           updated_at: string
           user_id: string
-          whop_id: string | null
           xp: number
         }
         Insert: {
           created_at?: string
           daily_cis_used?: number
           daily_sidebet_used?: number
-          device_fingerprint?: string | null
           id?: string
           last_reset_date?: string | null
           rank?: string | null
@@ -86,14 +118,12 @@ export type Database = {
           total_cis_runs?: number
           updated_at?: string
           user_id: string
-          whop_id?: string | null
           xp?: number
         }
         Update: {
           created_at?: string
           daily_cis_used?: number
           daily_sidebet_used?: number
-          device_fingerprint?: string | null
           id?: string
           last_reset_date?: string | null
           rank?: string | null
@@ -101,7 +131,6 @@ export type Database = {
           total_cis_runs?: number
           updated_at?: string
           user_id?: string
-          whop_id?: string | null
           xp?: number
         }
         Relationships: []
