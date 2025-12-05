@@ -11,10 +11,14 @@ import ResetPassword from "./pages/ResetPassword";
 import Pricing from "./pages/Pricing";
 import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
+import { useCapacitor } from "./hooks/useCapacitor";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  useCapacitor();
+  
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -34,6 +38,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
