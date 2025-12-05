@@ -5,9 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface UserProfile {
   id: string;
   user_id: string;
-  whop_id: string | null;
   tier: "free" | "basic" | "elite" | "blackout" | "lifetime";
-  device_fingerprint: string | null;
   daily_cis_used: number;
   daily_sidebet_used: number;
   total_cis_runs: number;
