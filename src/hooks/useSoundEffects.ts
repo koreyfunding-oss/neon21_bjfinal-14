@@ -38,6 +38,9 @@ const SOUND_CONFIGS: Record<SoundType, { frequency: number; duration: number; ty
 export function useSoundEffects() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const enabledRef = useRef(true);
+  const speechEnabledRef = useRef(true);
+  const lastAnnouncementRef = useRef<string>('');
+  const lastAnnouncementTimeRef = useRef<number>(0);
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
@@ -110,8 +113,95 @@ export function useSoundEffects() {
     playChord([659, 784, 988, 1319], 0.6);
   }, [playChord]);
 
+  // Speech synthesis for announcements
+  const announce = useCallback((text: string, priority: boolean = false) => {
+    if (!enabledRef.current || !speechEnabledRef.current) return;
+    if (!('speechSynthesis' in window)) return;
+
+    const now = Date.now();
+    // Debounce: skip if same message within 2 seconds (unless priority)
+    if (!priority && text === lastAnnouncementRef.current && now - lastAnnouncementTimeRef.current < 2000) {
+      return;
+    }
+
+    // Cancel any ongoing speech for priority announcements
+    if (priority) {
+      window.speechSynthesis.cancel();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.3; // Faster for quick updates
+    utterance.pitch = 1.0;
+    utterance.volume = 0.8;
+
+    // Try to find a good voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => 
+      v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Alex')
+    ) || voices.find(v => v.lang.startsWith('en'));
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+    lastAnnouncementRef.current = text;
+    lastAnnouncementTimeRef.current = now;
+  }, []);
+
+  // Announce action recommendation
+  const announceAction = useCallback((action: string | null, confidence?: number) => {
+    if (!action) return;
+    
+    const actionText = action.toUpperCase();
+    let message = actionText;
+    
+    if (confidence !== undefined) {
+      if (confidence >= 0.9) {
+        message = `${actionText}!`;
+      } else if (confidence >= 0.7) {
+        message = actionText;
+      } else {
+        message = `Consider ${actionText.toLowerCase()}`;
+      }
+    }
+    
+    announce(message, true);
+  }, [announce]);
+
+  // Announce probability changes
+  const announceProbability = useCallback((bustProb: number, improveProb: number) => {
+    if (bustProb >= 60) {
+      announce(`High bust risk: ${Math.round(bustProb)} percent`);
+    } else if (improveProb >= 70) {
+      announce(`Good odds to improve: ${Math.round(improveProb)} percent`);
+    }
+  }, [announce]);
+
+  // Announce detected cards
+  const announceCards = useCallback((playerCards: string[], dealerCard: string | null) => {
+    if (playerCards.length === 0) return;
+    
+    const playerText = playerCards.join(' ');
+    const dealerText = dealerCard ? `, dealer shows ${dealerCard}` : '';
+    announce(`${playerText}${dealerText}`);
+  }, [announce]);
+
+  // Announce new cards detected
+  const announceNewCards = useCallback((newCards: string[]) => {
+    if (newCards.length === 0) return;
+    announce(`Tracking ${newCards.join(', ')}`);
+  }, [announce]);
+
   const setEnabled = useCallback((enabled: boolean) => {
     enabledRef.current = enabled;
+  }, []);
+
+  const setSpeechEnabled = useCallback((enabled: boolean) => {
+    speechEnabledRef.current = enabled;
+    if (!enabled) {
+      window.speechSynthesis?.cancel();
+    }
   }, []);
 
   return {
@@ -120,5 +210,12 @@ export function useSoundEffects() {
     playWinFanfare,
     playBlackjackFanfare,
     setEnabled,
+    // Speech synthesis
+    announce,
+    announceAction,
+    announceProbability,
+    announceCards,
+    announceNewCards,
+    setSpeechEnabled,
   };
 }
