@@ -69,6 +69,7 @@ export default function Index() {
   const [screenCaptureActive, setScreenCaptureActive] = useState(false);
   const [turboMode, setTurboMode] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
+  const [allSeenCards, setAllSeenCards] = useState<Set<string>>(new Set()); // Track all cards seen during session
   const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
   const [bankroll, setBankroll] = useState(500);
   const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled } = useSoundEffects();
@@ -195,47 +196,60 @@ export default function Index() {
   }, [playerCards, dealerUpcard, playSound]);
 
   const handleClearHand = useCallback(() => {
-    playerCards.forEach(card => setDeckState(prev => untrackCard(prev, card)));
-    if (dealerUpcard) setDeckState(prev => untrackCard(prev, dealerUpcard));
+    // Clear current hand display only, keep deck state for card counting
     setPlayerCards([]); setDealerUpcard(null); setAnalysis(null); setCisAnalysis(null); setActiveInput('player');
-  }, [playerCards, dealerUpcard]);
+  }, []);
 
-  const handleResetDeck = useCallback(() => setDeckState(createDeckState(numDecks)), [numDecks]);
-  const handleDeckChange = useCallback((d: number) => { setNumDecks(d); setDeckState(createDeckState(d)); }, []);
+  const handleResetDeck = useCallback(() => { setDeckState(createDeckState(numDecks)); setAllSeenCards(new Set()); }, [numDecks]);
+  const handleDeckChange = useCallback((d: number) => { setNumDecks(d); setDeckState(createDeckState(d)); setAllSeenCards(new Set()); }, []);
   const handleTableCardPlayed = useCallback((card: string) => setDeckState(prev => trackCard(prev, card)), []);
   const handleTableCardRemoved = useCallback((card: string) => setDeckState(prev => untrackCard(prev, card)), []);
 
   const handleCardsDetected = useCallback((result: ScanResult) => {
-    playSound('cardSelect');
-    // Clear existing cards first
-    playerCards.forEach(card => setDeckState(prev => untrackCard(prev, card)));
-    if (dealerUpcard) setDeckState(prev => untrackCard(prev, dealerUpcard));
+    // Accumulative card tracking - only track NEW cards that haven't been seen
+    const currentScanCards: string[] = [];
     
-    // Set new detected cards
+    // Collect all cards from this scan
+    if (result.player_cards) currentScanCards.push(...result.player_cards);
+    if (result.dealer_card) currentScanCards.push(result.dealer_card);
+    if (result.dealer_hole_card) currentScanCards.push(result.dealer_hole_card);
+    if (result.other_cards) currentScanCards.push(...result.other_cards);
+    
+    // Find cards that are NEW (not seen before in this session)
+    const newCards = currentScanCards.filter(card => !allSeenCards.has(card));
+    
+    if (newCards.length > 0) {
+      playSound('cardSelect');
+      
+      // Add new cards to the seen set
+      setAllSeenCards(prev => {
+        const updated = new Set(prev);
+        newCards.forEach(card => updated.add(card));
+        return updated;
+      });
+      
+      // Track new cards in deck state
+      newCards.forEach(card => setDeckState(prev => trackCard(prev, card)));
+    }
+    
+    // Always update current hand display (player cards + dealer card for strategy)
     const newPlayerCards = result.player_cards || [];
-    setPlayerCards(newPlayerCards);
-    newPlayerCards.forEach(card => setDeckState(prev => trackCard(prev, card)));
-    
-    if (result.dealer_card) {
-      setDealerUpcard(result.dealer_card);
-      setDeckState(prev => trackCard(prev, result.dealer_card!));
-    } else {
-      setDealerUpcard(null);
+    if (newPlayerCards.length > 0 || result.dealer_card) {
+      // Only update displayed hand if we have cards
+      if (newPlayerCards.length > 0) {
+        setPlayerCards(newPlayerCards);
+      }
+      
+      if (result.dealer_card) {
+        setDealerUpcard(result.dealer_card);
+      }
+      
+      // Analyze if we have enough cards
+      if (newPlayerCards.length >= 2 && result.dealer_card) {
+        setAnalysis(analyzeHand(newPlayerCards, result.dealer_card));
+      }
     }
-    
-    // Track dealer hole card if revealed
-    if (result.dealer_hole_card) {
-      setDeckState(prev => trackCard(prev, result.dealer_hole_card!));
-    }
-    
-    // Track other table cards
-    result.other_cards?.forEach(card => setDeckState(prev => trackCard(prev, card)));
-    
-    // Analyze if we have enough cards
-    if (newPlayerCards.length >= 2 && result.dealer_card) {
-      setAnalysis(analyzeHand(newPlayerCards, result.dealer_card));
-    }
-  }, [playerCards, dealerUpcard, playSound]);
+  }, [allSeenCards, playSound]);
 
   const handleRecordResult = useCallback((result: 'win' | 'loss' | 'push' | 'blackjack') => {
     if (result === 'blackjack') playBlackjackFanfare();
@@ -269,7 +283,7 @@ export default function Index() {
     playSound('cardSelect');
   }, [playSound]);
 
-  const handleResetSession = useCallback(() => { setSession(initialSession); setDeckState(createDeckState(numDecks)); }, [numDecks]);
+  const handleResetSession = useCallback(() => { setSession(initialSession); setDeckState(createDeckState(numDecks)); setAllSeenCards(new Set()); }, [numDecks]);
   const { total, soft } = playerCards.length >= 1 ? calculateHandTotal(playerCards) : { total: 0, soft: false };
   const bustProbability = dealerUpcard ? getDealerBustProbability(dealerUpcard) : 0;
 
