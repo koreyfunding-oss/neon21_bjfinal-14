@@ -98,7 +98,11 @@ export default function Index() {
   const isPremium = profile?.tier !== 'free';
 
   useEffect(() => { initializeSecurity(); }, []);
-  useEffect(() => { setEnabled(soundEnabled); setSpeechEnabled(soundEnabled && speechEnabled); }, [soundEnabled, speechEnabled, setEnabled, setSpeechEnabled]);
+  // Speech only enabled for premium users
+  useEffect(() => { 
+    setEnabled(soundEnabled); 
+    setSpeechEnabled(soundEnabled && speechEnabled && isPremium); 
+  }, [soundEnabled, speechEnabled, isPremium, setEnabled, setSpeechEnabled]);
   
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -346,14 +350,25 @@ export default function Index() {
           <div className="flex items-center gap-2">
             <SoundToggle enabled={soundEnabled} onToggle={() => { playSound('click'); setSoundEnabled(!soundEnabled); }} />
             <button 
-              onClick={() => { playSound('click'); setSpeechEnabledState(!speechEnabled); }} 
+              onClick={() => { 
+                if (!isPremium) return;
+                playSound('click'); 
+                setSpeechEnabledState(!speechEnabled); 
+              }} 
               className={cn(
-                'p-1.5 rounded-lg border transition-all',
-                speechEnabled ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground'
+                'p-1.5 rounded-lg border transition-all relative',
+                !isPremium 
+                  ? 'border-border bg-secondary text-muted-foreground opacity-50 cursor-not-allowed' 
+                  : speechEnabled 
+                    ? 'border-primary bg-primary/10 text-primary' 
+                    : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
               )}
-              title={speechEnabled ? 'Voice announcements on' : 'Voice announcements off'}
+              title={!isPremium ? 'Voice announcements (Premium feature)' : speechEnabled ? 'Voice announcements on' : 'Voice announcements off'}
             >
-              {speechEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              {speechEnabled && isPremium ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              {!isPremium && (
+                <span className="absolute -top-1 -right-1 text-[6px] bg-yellow-500 text-yellow-950 px-1 rounded font-bold">PRO</span>
+              )}
             </button>
             <button onClick={() => { playSound('click'); setShowSettings(!showSettings); }} className={cn('p-1.5 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-4 h-4" /></button>
             <button onClick={() => { playSound('click'); setShowAdvanced(!showAdvanced); }} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground hover:text-primary transition-colors">
