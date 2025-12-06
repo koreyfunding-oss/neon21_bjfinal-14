@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Flame, Thermometer, Snowflake, Crown, AlertTriangle, Sparkles } from 'lucide-react';
 import { DeckState, getSeatSideBetPredictions, SeatSideBetPrediction } from '@/lib/cardTracker';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SeatRecommendationProps {
   deckState: DeckState;
@@ -127,72 +128,91 @@ export function SeatRecommendation({ deckState, isPremium, announcedSeat }: Seat
       {/* All Seats Grid */}
       <div>
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">All Positions</p>
-        <div className="grid grid-cols-7 gap-1">
-          {predictions
-            .sort((a, b) => a.seat - b.seat) // Sort back by seat number for display
-            .map((seat) => (
-              <motion.div
-                key={seat.seat}
-                whileHover={{ scale: 1.05 }}
-                animate={announcedSeat === seat.seat ? {
-                  boxShadow: [
-                    '0 0 0px rgba(249, 115, 22, 0)',
-                    '0 0 20px rgba(249, 115, 22, 0.8)',
-                    '0 0 30px rgba(249, 115, 22, 1)',
-                    '0 0 20px rgba(249, 115, 22, 0.8)',
-                    '0 0 0px rgba(249, 115, 22, 0)'
-                  ],
-                  scale: [1, 1.15, 1.1, 1.15, 1],
-                } : seat.hasBlackjackPotential ? {
-                  boxShadow: [
-                    '0 0 8px rgba(34, 211, 238, 0.4)',
-                    '0 0 16px rgba(34, 211, 238, 0.7)',
-                    '0 0 8px rgba(34, 211, 238, 0.4)'
-                  ],
-                } : {}}
-                transition={announcedSeat === seat.seat ? {
-                  duration: 1.5,
-                  repeat: 2,
-                  ease: "easeInOut"
-                } : seat.hasBlackjackPotential ? {
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                } : {}}
-                className={cn(
-                  'p-1.5 rounded text-center border transition-all cursor-default relative',
-                  seat.recommendation === 'HOT' 
-                    ? 'border-orange-500/50 bg-orange-500/10' 
-                    : seat.recommendation === 'WARM'
-                    ? 'border-yellow-500/50 bg-yellow-500/10'
-                    : 'border-border bg-secondary/30',
-                  seat.hasBlackjackPotential && 'border-cyan-400/60 bg-cyan-500/10',
-                  announcedSeat === seat.seat && 'ring-2 ring-orange-400 ring-offset-1 ring-offset-background'
-                )}
-              >
-                {seat.hasBlackjackPotential && (
-                  <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-cyan-400" />
-                )}
-                <p className="text-[10px] font-display font-bold text-foreground">{seat.seat}</p>
-                <div className="flex justify-center mt-0.5">
-                  {seat.hasBlackjackPotential ? (
-                    <Sparkles className="w-3 h-3 text-cyan-400" />
-                  ) : (
-                    getRecommendationIcon(seat.recommendation)
-                  )}
-                </div>
-                <p className={cn(
-                  'text-[8px] font-bold mt-0.5',
-                  seat.hasBlackjackPotential ? 'text-cyan-400' :
-                  seat.recommendation === 'HOT' ? 'text-orange-400' :
-                  seat.recommendation === 'WARM' ? 'text-yellow-400' :
-                  'text-muted-foreground'
-                )}>
-                  {seat.hasBlackjackPotential ? `${seat.blackjackPotential.toFixed(0)}%` : seat.overallScore.toFixed(0)}
-                </p>
-              </motion.div>
-            ))}
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <div className="grid grid-cols-7 gap-1">
+            {predictions
+              .sort((a, b) => a.seat - b.seat) // Sort back by seat number for display
+              .map((seat) => (
+                <Tooltip key={seat.seat}>
+                  <TooltipTrigger asChild>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      animate={announcedSeat === seat.seat ? {
+                        boxShadow: [
+                          '0 0 0px rgba(249, 115, 22, 0)',
+                          '0 0 20px rgba(249, 115, 22, 0.8)',
+                          '0 0 30px rgba(249, 115, 22, 1)',
+                          '0 0 20px rgba(249, 115, 22, 0.8)',
+                          '0 0 0px rgba(249, 115, 22, 0)'
+                        ],
+                        scale: [1, 1.15, 1.1, 1.15, 1],
+                      } : seat.hasBlackjackPotential ? {
+                        boxShadow: [
+                          '0 0 8px rgba(34, 211, 238, 0.4)',
+                          '0 0 16px rgba(34, 211, 238, 0.7)',
+                          '0 0 8px rgba(34, 211, 238, 0.4)'
+                        ],
+                      } : {}}
+                      transition={announcedSeat === seat.seat ? {
+                        duration: 1.5,
+                        repeat: 2,
+                        ease: "easeInOut"
+                      } : seat.hasBlackjackPotential ? {
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      } : {}}
+                      className={cn(
+                        'p-1.5 rounded text-center border transition-all cursor-pointer relative',
+                        seat.recommendation === 'HOT' 
+                          ? 'border-orange-500/50 bg-orange-500/10' 
+                          : seat.recommendation === 'WARM'
+                          ? 'border-yellow-500/50 bg-yellow-500/10'
+                          : 'border-border bg-secondary/30',
+                        seat.hasBlackjackPotential && 'border-cyan-400/60 bg-cyan-500/10',
+                        announcedSeat === seat.seat && 'ring-2 ring-orange-400 ring-offset-1 ring-offset-background'
+                      )}
+                    >
+                      {seat.hasBlackjackPotential && (
+                        <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-cyan-400" />
+                      )}
+                      <p className="text-[10px] font-display font-bold text-foreground">{seat.seat}</p>
+                      <div className="flex justify-center mt-0.5">
+                        {seat.hasBlackjackPotential ? (
+                          <Sparkles className="w-3 h-3 text-cyan-400" />
+                        ) : (
+                          getRecommendationIcon(seat.recommendation)
+                        )}
+                      </div>
+                      <p className={cn(
+                        'text-[8px] font-bold mt-0.5',
+                        seat.hasBlackjackPotential ? 'text-cyan-400' :
+                        seat.recommendation === 'HOT' ? 'text-orange-400' :
+                        seat.recommendation === 'WARM' ? 'text-yellow-400' :
+                        'text-muted-foreground'
+                      )}>
+                        {seat.hasBlackjackPotential ? `${seat.blackjackPotential.toFixed(0)}%` : seat.overallScore.toFixed(0)}
+                      </p>
+                    </motion.div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-card border-border text-xs p-2">
+                    <div className="space-y-1">
+                      <p className="font-display font-bold text-foreground">{seat.seatName}</p>
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-cyan-400" />
+                        <span className="text-cyan-400 font-bold">BJ: {seat.blackjackPotential.toFixed(1)}%</span>
+                      </div>
+                      <div className="text-muted-foreground text-[10px] space-y-0.5">
+                        <p>Pair: {seat.pairPotential.toFixed(1)}%</p>
+                        <p>Flush: {seat.flushPotential.toFixed(1)}%</p>
+                        <p>Straight: {seat.straightPotential.toFixed(1)}%</p>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+          </div>
+        </TooltipProvider>
       </div>
 
       {/* Legend */}
