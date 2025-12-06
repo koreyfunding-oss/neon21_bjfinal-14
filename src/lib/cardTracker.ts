@@ -348,7 +348,9 @@ export interface SeatSideBetPrediction {
   pairPotential: number;
   flushPotential: number;
   straightPotential: number;
+  blackjackPotential: number;
   recommendation: 'HOT' | 'WARM' | 'COLD';
+  hasBlackjackPotential: boolean;
 }
 
 export function getSeatSideBetPredictions(state: DeckState, numSeats: number = 7): SeatSideBetPrediction[] {
@@ -365,6 +367,7 @@ export function getSeatSideBetPredictions(state: DeckState, numSeats: number = 7
   const pairBaseProbability = calculatePairPotential(state);
   const flushBaseProbability = calculateFlushPotential(state);
   const straightBaseProbability = calculateStraightPotential(state);
+  const blackjackBaseProbability = calculateBlackjackPotential(state);
 
   for (let seat = 0; seat < numSeats; seat++) {
     // Cards dealt position affects probability slightly
@@ -375,6 +378,7 @@ export function getSeatSideBetPredictions(state: DeckState, numSeats: number = 7
     const pairPotential = pairBaseProbability * positionFactor;
     const flushPotential = flushBaseProbability * positionFactor;
     const straightPotential = straightBaseProbability * positionFactor;
+    const blackjackPotential = blackjackBaseProbability * positionFactor;
 
     // Overall score based on weighted combination
     const overallScore = (
@@ -401,6 +405,9 @@ export function getSeatSideBetPredictions(state: DeckState, numSeats: number = 7
     if (overallScore >= 12) recommendation = 'HOT';
     else if (overallScore >= 8) recommendation = 'WARM';
 
+    // High blackjack potential threshold (above average ~4.8%)
+    const hasBlackjackPotential = blackjackPotential >= 5.5;
+
     predictions.push({
       seat: seat + 1,
       seatName: seatNames[seat] || `Seat ${seat + 1}`,
@@ -410,7 +417,9 @@ export function getSeatSideBetPredictions(state: DeckState, numSeats: number = 7
       pairPotential,
       flushPotential,
       straightPotential,
-      recommendation
+      blackjackPotential,
+      recommendation,
+      hasBlackjackPotential
     });
   }
 
@@ -418,6 +427,24 @@ export function getSeatSideBetPredictions(state: DeckState, numSeats: number = 7
   predictions.sort((a, b) => b.overallScore - a.overallScore);
 
   return predictions;
+}
+
+// Calculate probability of getting a natural blackjack (Ace + 10-value card)
+function calculateBlackjackPotential(state: DeckState): number {
+  const total = getTotalRemaining(state);
+  if (total < 2) return 0;
+
+  const aces = state.remaining['A'] || 0;
+  const tens = (state.remaining['10'] || 0) + 
+               (state.remaining['J'] || 0) + 
+               (state.remaining['Q'] || 0) + 
+               (state.remaining['K'] || 0);
+
+  // P(BJ) = P(Ace first) * P(Ten second) + P(Ten first) * P(Ace second)
+  const aceFirst = (aces / total) * (tens / (total - 1));
+  const tenFirst = (tens / total) * (aces / (total - 1));
+  
+  return (aceFirst + tenFirst) * 100;
 }
 
 function calculatePairPotential(state: DeckState): number {

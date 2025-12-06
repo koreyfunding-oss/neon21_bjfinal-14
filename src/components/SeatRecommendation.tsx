@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Flame, Thermometer, Snowflake, Crown, AlertTriangle } from 'lucide-react';
+import { Target, Flame, Thermometer, Snowflake, Crown, AlertTriangle, Sparkles } from 'lucide-react';
 import { DeckState, getSeatSideBetPredictions, SeatSideBetPrediction } from '@/lib/cardTracker';
 import { cn } from '@/lib/utils';
 
@@ -79,7 +79,7 @@ export function SeatRecommendation({ deckState, isPremium, announcedSeat }: Seat
           </div>
         </div>
 
-        <div className="mt-2 pt-2 border-t border-border/50 grid grid-cols-3 gap-2 text-center">
+        <div className="mt-2 pt-2 border-t border-border/50 grid grid-cols-4 gap-2 text-center">
           <div>
             <p className="text-[10px] text-muted-foreground">Pair</p>
             <p className="text-xs font-bold text-foreground">{bestSeat.pairPotential.toFixed(1)}%</p>
@@ -91,6 +91,13 @@ export function SeatRecommendation({ deckState, isPremium, announcedSeat }: Seat
           <div>
             <p className="text-[10px] text-muted-foreground">Straight</p>
             <p className="text-xs font-bold text-foreground">{bestSeat.straightPotential.toFixed(1)}%</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">BJ</p>
+            <p className={cn(
+              "text-xs font-bold",
+              bestSeat.hasBlackjackPotential ? "text-cyan-400" : "text-foreground"
+            )}>{bestSeat.blackjackPotential.toFixed(1)}%</p>
           </div>
         </div>
       </motion.div>
@@ -136,33 +143,52 @@ export function SeatRecommendation({ deckState, isPremium, announcedSeat }: Seat
                     '0 0 0px rgba(249, 115, 22, 0)'
                   ],
                   scale: [1, 1.15, 1.1, 1.15, 1],
+                } : seat.hasBlackjackPotential ? {
+                  boxShadow: [
+                    '0 0 8px rgba(34, 211, 238, 0.4)',
+                    '0 0 16px rgba(34, 211, 238, 0.7)',
+                    '0 0 8px rgba(34, 211, 238, 0.4)'
+                  ],
                 } : {}}
                 transition={announcedSeat === seat.seat ? {
                   duration: 1.5,
                   repeat: 2,
                   ease: "easeInOut"
+                } : seat.hasBlackjackPotential ? {
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
                 } : {}}
                 className={cn(
-                  'p-1.5 rounded text-center border transition-all cursor-default',
+                  'p-1.5 rounded text-center border transition-all cursor-default relative',
                   seat.recommendation === 'HOT' 
                     ? 'border-orange-500/50 bg-orange-500/10' 
                     : seat.recommendation === 'WARM'
                     ? 'border-yellow-500/50 bg-yellow-500/10'
                     : 'border-border bg-secondary/30',
+                  seat.hasBlackjackPotential && 'border-cyan-400/60 bg-cyan-500/10',
                   announcedSeat === seat.seat && 'ring-2 ring-orange-400 ring-offset-1 ring-offset-background'
                 )}
               >
+                {seat.hasBlackjackPotential && (
+                  <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-cyan-400" />
+                )}
                 <p className="text-[10px] font-display font-bold text-foreground">{seat.seat}</p>
                 <div className="flex justify-center mt-0.5">
-                  {getRecommendationIcon(seat.recommendation)}
+                  {seat.hasBlackjackPotential ? (
+                    <Sparkles className="w-3 h-3 text-cyan-400" />
+                  ) : (
+                    getRecommendationIcon(seat.recommendation)
+                  )}
                 </div>
                 <p className={cn(
                   'text-[8px] font-bold mt-0.5',
+                  seat.hasBlackjackPotential ? 'text-cyan-400' :
                   seat.recommendation === 'HOT' ? 'text-orange-400' :
                   seat.recommendation === 'WARM' ? 'text-yellow-400' :
                   'text-muted-foreground'
                 )}>
-                  {seat.overallScore.toFixed(0)}
+                  {seat.hasBlackjackPotential ? `${seat.blackjackPotential.toFixed(0)}%` : seat.overallScore.toFixed(0)}
                 </p>
               </motion.div>
             ))}
@@ -170,10 +196,11 @@ export function SeatRecommendation({ deckState, isPremium, announcedSeat }: Seat
       </div>
 
       {/* Legend */}
-      <div className="flex justify-center gap-3 text-[9px] text-muted-foreground pt-1">
+      <div className="flex justify-center gap-3 text-[9px] text-muted-foreground pt-1 flex-wrap">
         <span className="flex items-center gap-1"><Flame className="w-2.5 h-2.5 text-orange-400" /> Hot</span>
         <span className="flex items-center gap-1"><Thermometer className="w-2.5 h-2.5 text-yellow-400" /> Warm</span>
         <span className="flex items-center gap-1"><Snowflake className="w-2.5 h-2.5 text-blue-400" /> Cold</span>
+        <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5 text-cyan-400" /> BJ Potential</span>
       </div>
     </div>
   );
