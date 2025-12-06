@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 interface SeatRecommendationProps {
   deckState: DeckState;
   isPremium: boolean;
+  announcedSeat?: number | null;
 }
 
-export function SeatRecommendation({ deckState, isPremium }: SeatRecommendationProps) {
+export function SeatRecommendation({ deckState, isPremium, announcedSeat }: SeatRecommendationProps) {
   if (!isPremium) {
     return (
       <div className="text-center py-4">
@@ -126,13 +127,29 @@ export function SeatRecommendation({ deckState, isPremium }: SeatRecommendationP
               <motion.div
                 key={seat.seat}
                 whileHover={{ scale: 1.05 }}
+                animate={announcedSeat === seat.seat ? {
+                  boxShadow: [
+                    '0 0 0px rgba(249, 115, 22, 0)',
+                    '0 0 20px rgba(249, 115, 22, 0.8)',
+                    '0 0 30px rgba(249, 115, 22, 1)',
+                    '0 0 20px rgba(249, 115, 22, 0.8)',
+                    '0 0 0px rgba(249, 115, 22, 0)'
+                  ],
+                  scale: [1, 1.15, 1.1, 1.15, 1],
+                } : {}}
+                transition={announcedSeat === seat.seat ? {
+                  duration: 1.5,
+                  repeat: 2,
+                  ease: "easeInOut"
+                } : {}}
                 className={cn(
                   'p-1.5 rounded text-center border transition-all cursor-default',
                   seat.recommendation === 'HOT' 
                     ? 'border-orange-500/50 bg-orange-500/10' 
                     : seat.recommendation === 'WARM'
                     ? 'border-yellow-500/50 bg-yellow-500/10'
-                    : 'border-border bg-secondary/30'
+                    : 'border-border bg-secondary/30',
+                  announcedSeat === seat.seat && 'ring-2 ring-orange-400 ring-offset-1 ring-offset-background'
                 )}
               >
                 <p className="text-[10px] font-display font-bold text-foreground">{seat.seat}</p>

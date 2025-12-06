@@ -77,7 +77,8 @@ export default function Index() {
   const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled, announceAction, announceNewCards, announceHotSeat, setSpeechEnabled } = useSoundEffects();
   const [speechEnabled, setSpeechEnabledState] = useState(true);
   const lastAnnouncedActionRef = useRef<string | null>(null);
-  const lastAnnouncedHotSeatRef = useRef<number | null>(null);
+  const [announcedHotSeat, setAnnouncedHotSeat] = useState<number | null>(null);
+  const lastHotSeatRef = useRef<number | null>(null);
 
   // Calculate current bet based on strategy
   const currentBet = useMemo(() => {
@@ -200,9 +201,13 @@ export default function Index() {
     if (hotSeats.length > 0) {
       const bestHotSeat = hotSeats[0];
       // Only announce if it's a different seat than last announced
-      if (bestHotSeat.seat !== lastAnnouncedHotSeatRef.current) {
-        lastAnnouncedHotSeatRef.current = bestHotSeat.seat;
+      if (bestHotSeat.seat !== lastHotSeatRef.current) {
+        lastHotSeatRef.current = bestHotSeat.seat;
+        setAnnouncedHotSeat(bestHotSeat.seat);
         announceHotSeat(bestHotSeat.seat, bestHotSeat.seatName, bestHotSeat.bestBet);
+        
+        // Clear the flash after animation completes
+        setTimeout(() => setAnnouncedHotSeat(null), 4500);
       }
     }
   }, [deckState, cameraActive, screenCaptureActive, isPremium, announceHotSeat]);
@@ -528,7 +533,8 @@ export default function Index() {
               </div>
               <SeatRecommendation 
                 deckState={deckState} 
-                isPremium={isPremium} 
+                isPremium={isPremium}
+                announcedSeat={announcedHotSeat}
               />
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.16 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
