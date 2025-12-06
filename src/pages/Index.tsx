@@ -10,6 +10,7 @@ import { HitProbability } from '@/components/HitProbability';
 import { SideBetPrediction } from '@/components/SideBetPrediction';
 import { TableCards } from '@/components/TableCards';
 import { CameraScanner, type ScanResult } from '@/components/CameraScanner';
+import { ScreenScanner } from '@/components/ScreenScanner';
 import { QuickAction } from '@/components/QuickAction';
 import { HeatIndex } from '@/components/HeatIndex';
 import { AggressionSelector } from '@/components/AggressionSelector';
@@ -65,6 +66,7 @@ export default function Index() {
   const [securityBadge] = useState(() => generateWatermark());
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [cameraActive, setCameraActive] = useState(false);
+  const [screenCaptureActive, setScreenCaptureActive] = useState(false);
   const [turboMode, setTurboMode] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
@@ -158,14 +160,14 @@ export default function Index() {
 
   // Show quick action overlay in turbo mode
   useEffect(() => {
-    if (turboMode && cameraActive && analysis) {
+    if (turboMode && (cameraActive || screenCaptureActive) && analysis) {
       setShowQuickAction(true);
       const timer = setTimeout(() => setShowQuickAction(false), 2000);
       return () => clearTimeout(timer);
     } else {
       setShowQuickAction(false);
     }
-  }, [turboMode, cameraActive, analysis?.action]);
+  }, [turboMode, cameraActive, screenCaptureActive, analysis?.action]);
 
   const handleCardSelect = useCallback((value: string) => {
     playSound('cardSelect');
@@ -276,7 +278,7 @@ export default function Index() {
       {/* Quick Action Overlay for Turbo Mode */}
       <QuickAction 
         action={cisAnalysis?.action || analysis?.action || null}
-        isVisible={showQuickAction && turboMode && cameraActive}
+        isVisible={showQuickAction && turboMode && (cameraActive || screenCaptureActive)}
         confidence={analysis?.confidence}
       />
       
@@ -336,16 +338,28 @@ export default function Index() {
                   Trial Feature — Requires paid subscription
                 </div>
               )}
-              <CameraScanner 
-                onCardsDetected={handleCardsDetected} 
-                onOutcomeDetected={handleScanOutcome}
-                onSideBetWin={handleSideBetWin}
-                isActive={cameraActive} 
-                onToggle={() => setCameraActive(!cameraActive)}
-                isPremium={isPremium}
-                turboMode={turboMode}
-                onTurboToggle={() => setTurboMode(!turboMode)}
-              />
+              <div className="flex gap-2 flex-wrap mb-4">
+                <CameraScanner 
+                  onCardsDetected={handleCardsDetected} 
+                  onOutcomeDetected={handleScanOutcome}
+                  onSideBetWin={handleSideBetWin}
+                  isActive={cameraActive} 
+                  onToggle={() => { setCameraActive(!cameraActive); if (screenCaptureActive) setScreenCaptureActive(false); }}
+                  isPremium={isPremium}
+                  turboMode={turboMode}
+                  onTurboToggle={() => setTurboMode(!turboMode)}
+                />
+                <ScreenScanner 
+                  onCardsDetected={handleCardsDetected} 
+                  onOutcomeDetected={handleScanOutcome}
+                  onSideBetWin={handleSideBetWin}
+                  isActive={screenCaptureActive} 
+                  onToggle={() => { setScreenCaptureActive(!screenCaptureActive); if (cameraActive) setCameraActive(false); }}
+                  isPremium={isPremium}
+                  turboMode={turboMode}
+                  onTurboToggle={() => setTurboMode(!turboMode)}
+                />
+              </div>
               <div className="flex gap-2 mb-4 mt-4">
                 <button onClick={() => setActiveInput('player')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'player' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Your Hand {playerCards.length > 0 && `(${playerCards.length})`}</button>
                 <button onClick={() => setActiveInput('dealer')} className={cn('flex-1 py-2 px-3 rounded-lg font-display text-sm uppercase tracking-wider transition-all', activeInput === 'dealer' ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80')}>Dealer {dealerUpcard && `(${dealerUpcard})`}</button>
