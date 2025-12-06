@@ -1,1 +1,10 @@
 project_id = "kwwjkhiezbisizevvvlv"
+
+[functions.scan-cards]
+verify_jwt = false
+
+[functions.cis-evaluate]
+verify_jwt = true
+
+[functions.whop-validate]
+verify_jwt = true
