@@ -30,6 +30,7 @@ import {
   trackCard, 
   untrackCard, 
   getSideBetPredictions,
+  getSeatSideBetPredictions,
   getTrueCount,
   getHighCardProbability,
   getLowCardProbability,
@@ -73,9 +74,10 @@ export default function Index() {
   const [allSeenCards, setAllSeenCards] = useState<Set<string>>(new Set()); // Track all cards seen during session
   const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
   const [bankroll, setBankroll] = useState(500);
-  const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled, announceAction, announceNewCards, setSpeechEnabled } = useSoundEffects();
+  const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled, announceAction, announceNewCards, announceHotSeat, setSpeechEnabled } = useSoundEffects();
   const [speechEnabled, setSpeechEnabledState] = useState(true);
   const lastAnnouncedActionRef = useRef<string | null>(null);
+  const lastAnnouncedHotSeatRef = useRef<number | null>(null);
 
   // Calculate current bet based on strategy
   const currentBet = useMemo(() => {
@@ -187,6 +189,23 @@ export default function Index() {
       }
     }
   }, [cameraActive, screenCaptureActive, analysis?.action, cisAnalysis?.action, analysis?.confidence, announceAction]);
+
+  // Announce hot seat when detected during scanning
+  useEffect(() => {
+    if (!isPremium || !(cameraActive || screenCaptureActive)) return;
+    
+    const seatPredictions = getSeatSideBetPredictions(deckState, 7);
+    const hotSeats = seatPredictions.filter(s => s.recommendation === 'HOT');
+    
+    if (hotSeats.length > 0) {
+      const bestHotSeat = hotSeats[0];
+      // Only announce if it's a different seat than last announced
+      if (bestHotSeat.seat !== lastAnnouncedHotSeatRef.current) {
+        lastAnnouncedHotSeatRef.current = bestHotSeat.seat;
+        announceHotSeat(bestHotSeat.seat, bestHotSeat.seatName, bestHotSeat.bestBet);
+      }
+    }
+  }, [deckState, cameraActive, screenCaptureActive, isPremium, announceHotSeat]);
 
   const handleCardSelect = useCallback((value: string) => {
     playSound('cardSelect');
