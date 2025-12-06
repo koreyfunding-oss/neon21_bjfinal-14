@@ -337,3 +337,154 @@ export function getHitProbabilityMatrix(state: DeckState): HitProbabilityResult[
   const decisionTotals = [12, 13, 14, 15, 16, 17, 18, 19];
   return decisionTotals.map(total => calculateHitProbability(state, total, false));
 }
+
+// Seat/Position side bet probability prediction
+export interface SeatSideBetPrediction {
+  seat: number;
+  seatName: string;
+  overallScore: number; // 0-100 score for side bet potential
+  bestBet: string;
+  bestBetProbability: number;
+  pairPotential: number;
+  flushPotential: number;
+  straightPotential: number;
+  recommendation: 'HOT' | 'WARM' | 'COLD';
+}
+
+export function getSeatSideBetPredictions(state: DeckState, numSeats: number = 7): SeatSideBetPrediction[] {
+  const total = getTotalRemaining(state);
+  if (total < numSeats * 4) {
+    // Not enough cards remaining for meaningful prediction
+    return [];
+  }
+
+  const seatNames = ['First Base', 'Seat 2', 'Seat 3', 'Seat 4', 'Seat 5', 'Seat 6', 'Third Base'];
+  const predictions: SeatSideBetPrediction[] = [];
+
+  // Calculate base probabilities from deck composition
+  const pairBaseProbability = calculatePairPotential(state);
+  const flushBaseProbability = calculateFlushPotential(state);
+  const straightBaseProbability = calculateStraightPotential(state);
+
+  for (let seat = 0; seat < numSeats; seat++) {
+    // Cards dealt position affects probability slightly
+    // First base gets first pick, slight advantage when deck is rich
+    const positionFactor = 1 + ((numSeats - seat - 1) / numSeats) * 0.05;
+    
+    // Calculate seat-specific potentials with position adjustment
+    const pairPotential = pairBaseProbability * positionFactor;
+    const flushPotential = flushBaseProbability * positionFactor;
+    const straightPotential = straightBaseProbability * positionFactor;
+
+    // Overall score based on weighted combination
+    const overallScore = (
+      pairPotential * 0.4 + 
+      flushPotential * 0.35 + 
+      straightPotential * 0.25
+    );
+
+    // Determine best bet for this seat
+    let bestBet = 'Perfect Pair';
+    let bestBetProbability = pairPotential;
+    
+    if (flushPotential > bestBetProbability) {
+      bestBet = '21+3 Flush';
+      bestBetProbability = flushPotential;
+    }
+    if (straightPotential > bestBetProbability) {
+      bestBet = '21+3 Straight';
+      bestBetProbability = straightPotential;
+    }
+
+    // Recommendation based on score
+    let recommendation: 'HOT' | 'WARM' | 'COLD' = 'COLD';
+    if (overallScore >= 12) recommendation = 'HOT';
+    else if (overallScore >= 8) recommendation = 'WARM';
+
+    predictions.push({
+      seat: seat + 1,
+      seatName: seatNames[seat] || `Seat ${seat + 1}`,
+      overallScore,
+      bestBet,
+      bestBetProbability,
+      pairPotential,
+      flushPotential,
+      straightPotential,
+      recommendation
+    });
+  }
+
+  // Sort by overall score (best first)
+  predictions.sort((a, b) => b.overallScore - a.overallScore);
+
+  return predictions;
+}
+
+function calculatePairPotential(state: DeckState): number {
+  const total = getTotalRemaining(state);
+  if (total < 2) return 0;
+
+  // Calculate probability of getting a pair
+  // Higher concentration of any single rank = higher pair probability
+  let pairPotential = 0;
+  
+  for (const card of CARD_VALUES) {
+    const count = state.remaining[card];
+    if (count >= 2) {
+      // Probability of getting this card twice
+      const firstCardProb = count / total;
+      const secondCardProb = (count - 1) / (total - 1);
+      pairPotential += firstCardProb * secondCardProb * 100;
+    }
+  }
+
+  return pairPotential;
+}
+
+function calculateFlushPotential(state: DeckState): number {
+  // Estimate flush potential based on suit distribution
+  // In a balanced deck, each suit has 13 cards per deck
+  const total = getTotalRemaining(state);
+  if (total < 3) return 0;
+
+  // For 21+3 flush: need 3 cards of same suit from player's 2 + dealer's 1
+  // Base probability around 5-6%, adjusted by deck richness
+  const highCardRatio = getHighCardProbability(state) / 100;
+  
+  // Higher concentration of remaining cards = higher flush potential
+  const concentrationFactor = 1 + (state.penetration / 200);
+  
+  return 5.5 * concentrationFactor * (1 + highCardRatio * 0.2);
+}
+
+function calculateStraightPotential(state: DeckState): number {
+  const total = getTotalRemaining(state);
+  if (total < 3) return 0;
+
+  // Check for sequences available in remaining cards
+  let straightPotential = 0;
+  
+  // Check each possible 3-card straight
+  const sequences = [
+    ['A', '2', '3'], ['2', '3', '4'], ['3', '4', '5'], ['4', '5', '6'],
+    ['5', '6', '7'], ['6', '7', '8'], ['7', '8', '9'], ['8', '9', '10'],
+    ['9', '10', 'J'], ['10', 'J', 'Q'], ['J', 'Q', 'K'], ['Q', 'K', 'A']
+  ];
+
+  for (const seq of sequences) {
+    const available = seq.every(card => state.remaining[card] > 0);
+    if (available) {
+      // Calculate probability of this sequence
+      const prob = seq.reduce((p, card) => p * (state.remaining[card] / total), 1);
+      straightPotential += prob * 100 * 6; // 6 arrangements of 3 cards
+    }
+  }
+
+  return Math.min(straightPotential, 15); // Cap at 15%
+}
+
+// Get the best seat recommendation
+export function getBestSeatForSideBets(state: DeckState): SeatSideBetPrediction | null {
+  const predictions = getSeatSideBetPredictions(state);
+  return predictions.length > 0 ? predictions[0] : null;
+}

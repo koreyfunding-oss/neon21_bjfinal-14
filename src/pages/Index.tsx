@@ -8,6 +8,7 @@ import { SessionStats, type SessionData } from '@/components/SessionStats';
 import { CardTracker } from '@/components/CardTracker';
 import { HitProbability } from '@/components/HitProbability';
 import { SideBetPrediction } from '@/components/SideBetPrediction';
+import { SeatRecommendation } from '@/components/SeatRecommendation';
 import { TableCards } from '@/components/TableCards';
 import { CameraScanner, type ScanResult } from '@/components/CameraScanner';
 import { ScreenScanner } from '@/components/ScreenScanner';
@@ -501,7 +502,17 @@ export default function Index() {
                 isPremium={profile?.tier !== 'free' || true} 
               />
             </motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.14 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-display font-bold text-primary uppercase tracking-wider">Best Seat for Side Bets</h3>
+                {profile?.tier === 'free' && <span className="text-[8px] text-yellow-400 uppercase">Pro</span>}
+              </div>
+              <SeatRecommendation 
+                deckState={deckState} 
+                isPremium={isPremium} 
+              />
+            </motion.div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.16 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm"><h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Card Counter</h3><CardTracker deckState={deckState} onReset={handleResetDeck} /></motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.18 }} className="p-3 rounded-xl border border-primary/30 bg-card/80 backdrop-blur-sm">
               <h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Profit Strategy</h3>
               <ProfitStrategy
