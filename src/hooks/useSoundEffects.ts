@@ -193,6 +193,12 @@ export function useSoundEffects() {
     announce(`Tracking ${newCards.join(', ')}`);
   }, [announce]);
 
+  // Announce hot seat for side bets
+  const announceHotSeat = useCallback((seatNumber: number, seatName: string, bestBet: string) => {
+    const message = `Hot seat! ${seatName} for ${bestBet}`;
+    announce(message, true);
+  }, [announce]);
+
   const setEnabled = useCallback((enabled: boolean) => {
     enabledRef.current = enabled;
   }, []);
@@ -216,6 +222,7 @@ export function useSoundEffects() {
     announceProbability,
     announceCards,
     announceNewCards,
+    announceHotSeat,
     setSpeechEnabled,
   };
 }
