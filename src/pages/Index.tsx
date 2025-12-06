@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeonHeader } from '@/components/NeonHeader';
@@ -39,7 +39,7 @@ import { calculateHeatIndex, type AggressionMode, type CISAnalysis } from '@/lib
 import { initializeSecurity, generateWatermark } from '@/lib/security';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { cn } from '@/lib/utils';
-import { Shield, Eye, EyeOff, Settings, LogOut } from 'lucide-react';
+import { Shield, Eye, EyeOff, Settings, LogOut, Volume2, VolumeX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -72,7 +72,9 @@ export default function Index() {
   const [allSeenCards, setAllSeenCards] = useState<Set<string>>(new Set()); // Track all cards seen during session
   const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
   const [bankroll, setBankroll] = useState(500);
-  const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled } = useSoundEffects();
+  const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled, announceAction, announceNewCards, setSpeechEnabled } = useSoundEffects();
+  const [speechEnabled, setSpeechEnabledState] = useState(true);
+  const lastAnnouncedActionRef = useRef<string | null>(null);
 
   // Calculate current bet based on strategy
   const currentBet = useMemo(() => {
@@ -96,7 +98,7 @@ export default function Index() {
   const isPremium = profile?.tier !== 'free';
 
   useEffect(() => { initializeSecurity(); }, []);
-  useEffect(() => { setEnabled(soundEnabled); }, [soundEnabled, setEnabled]);
+  useEffect(() => { setEnabled(soundEnabled); setSpeechEnabled(soundEnabled && speechEnabled); }, [soundEnabled, speechEnabled, setEnabled, setSpeechEnabled]);
   
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -170,6 +172,17 @@ export default function Index() {
     }
   }, [turboMode, cameraActive, screenCaptureActive, analysis?.action]);
 
+  // Announce action recommendation when it changes during scanning
+  useEffect(() => {
+    if ((cameraActive || screenCaptureActive) && analysis?.action) {
+      const action = cisAnalysis?.action || analysis.action;
+      if (action && action !== lastAnnouncedActionRef.current) {
+        lastAnnouncedActionRef.current = action;
+        announceAction(action, analysis.confidence);
+      }
+    }
+  }, [cameraActive, screenCaptureActive, analysis?.action, cisAnalysis?.action, analysis?.confidence, announceAction]);
+
   const handleCardSelect = useCallback((value: string) => {
     playSound('cardSelect');
     if (activeInput === 'player' && playerCards.length < 6) {
@@ -221,6 +234,9 @@ export default function Index() {
     if (newCards.length > 0) {
       playSound('cardSelect');
       
+      // Announce new cards being tracked
+      announceNewCards(newCards);
+      
       // Add new cards to the seen set
       setAllSeenCards(prev => {
         const updated = new Set(prev);
@@ -249,7 +265,7 @@ export default function Index() {
         setAnalysis(analyzeHand(newPlayerCards, result.dealer_card));
       }
     }
-  }, [allSeenCards, playSound]);
+  }, [allSeenCards, playSound, announceNewCards]);
 
   const handleRecordResult = useCallback((result: 'win' | 'loss' | 'push' | 'blackjack') => {
     if (result === 'blackjack') playBlackjackFanfare();
@@ -329,6 +345,16 @@ export default function Index() {
           <div className="flex-1 max-w-sm"><AggressionSelector value={aggressionMode} onChange={setAggressionMode} /></div>
           <div className="flex items-center gap-2">
             <SoundToggle enabled={soundEnabled} onToggle={() => { playSound('click'); setSoundEnabled(!soundEnabled); }} />
+            <button 
+              onClick={() => { playSound('click'); setSpeechEnabledState(!speechEnabled); }} 
+              className={cn(
+                'p-1.5 rounded-lg border transition-all',
+                speechEnabled ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground'
+              )}
+              title={speechEnabled ? 'Voice announcements on' : 'Voice announcements off'}
+            >
+              {speechEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
             <button onClick={() => { playSound('click'); setShowSettings(!showSettings); }} className={cn('p-1.5 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-4 h-4" /></button>
             <button onClick={() => { playSound('click'); setShowAdvanced(!showAdvanced); }} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground hover:text-primary transition-colors">
               {showAdvanced ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}{showAdvanced ? 'Simple' : 'Advanced'}
