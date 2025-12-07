@@ -217,7 +217,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_cis_usage: {
+        Args: { profile_user_id: string }
+        Returns: undefined
+      }
+      increment_sidebet_usage: {
+        Args: { profile_user_id: string }
+        Returns: undefined
+      }
+      update_user_tier: {
+        Args: {
+          new_tier: Database["public"]["Enums"]["subscription_tier"]
+          profile_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       subscription_tier: "free" | "basic" | "elite" | "blackout" | "lifetime"
