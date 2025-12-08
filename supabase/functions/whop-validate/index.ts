@@ -15,6 +15,20 @@ interface WhopMembership {
   metadata?: Record<string, unknown>;
 }
 
+interface WhopLicenseResponse {
+  id: string;
+  license_key: string;
+  status: string;
+  valid: boolean;
+  membership?: {
+    id: string;
+    product?: { id: string };
+    status: string;
+    valid: boolean;
+  };
+  product?: { id: string };
+}
+
 // Map Whop product IDs to tiers
 const TIER_MAP: Record<string, string> = {
   "prod_74ZbiZNaL4cai": "basic",
@@ -53,64 +67,104 @@ serve(async (req) => {
       });
     }
 
-    const { whop_token, device_fingerprint } = await req.json();
-
-    if (!whop_token) {
-      return new Response(JSON.stringify({ error: "No Whop token provided" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { whop_token, license_key, device_fingerprint } = await req.json();
 
     const whopApiKey = Deno.env.get("WHOP_API_KEY");
     if (!whopApiKey) {
+      console.error("WHOP_API_KEY not configured");
       return new Response(JSON.stringify({ error: "Whop API not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate with Whop API
-    const whopResponse = await fetch("https://api.whop.com/api/v2/me/memberships", {
-      headers: {
-        "Authorization": `Bearer ${whop_token}`,
-      },
-    });
+    let highestTier = "free";
+    let whopId = null;
 
-    if (!whopResponse.ok) {
-      return new Response(JSON.stringify({ error: "Invalid Whop token", tier: "free" }), {
-        status: 200,
+    // License key validation flow
+    if (license_key) {
+      console.log("Validating license key:", license_key.substring(0, 8) + "...");
+      
+      const licenseResponse = await fetch(`https://api.whop.com/api/v5/license_keys/${encodeURIComponent(license_key)}`, {
+        headers: {
+          "Authorization": `Bearer ${whopApiKey}`,
+        },
+      });
+
+      console.log("License API response status:", licenseResponse.status);
+
+      if (!licenseResponse.ok) {
+        const errorText = await licenseResponse.text();
+        console.error("License validation failed:", errorText);
+        return new Response(JSON.stringify({ error: "Invalid license key", tier: "free" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const licenseData: WhopLicenseResponse = await licenseResponse.json();
+      console.log("License data:", JSON.stringify(licenseData, null, 2));
+
+      if (licenseData.valid && licenseData.status === "active") {
+        // Get product ID from membership or directly from license
+        const productId = licenseData.membership?.product?.id || licenseData.product?.id;
+        console.log("Product ID from license:", productId);
+        
+        if (productId && TIER_MAP[productId]) {
+          highestTier = TIER_MAP[productId];
+          whopId = licenseData.id;
+          console.log("Mapped tier:", highestTier);
+        }
+      }
+    }
+    // Whop OAuth token validation flow
+    else if (whop_token) {
+      console.log("Validating Whop OAuth token");
+      
+      const whopResponse = await fetch("https://api.whop.com/api/v2/me/memberships", {
+        headers: {
+          "Authorization": `Bearer ${whop_token}`,
+        },
+      });
+
+      if (!whopResponse.ok) {
+        return new Response(JSON.stringify({ error: "Invalid Whop token", tier: "free" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const memberships: WhopMembership[] = await whopResponse.json();
+      
+      for (const membership of memberships) {
+        if (membership.valid && membership.status === "active") {
+          const productId = membership.product?.id;
+          const tier = TIER_MAP[productId];
+          
+          if (tier === "lifetime") {
+            highestTier = "lifetime";
+            whopId = membership.id;
+            break;
+          } else if (tier === "blackout" && highestTier !== "lifetime") {
+            highestTier = "blackout";
+            whopId = membership.id;
+          } else if (tier === "elite" && !["lifetime", "blackout"].includes(highestTier)) {
+            highestTier = "elite";
+            whopId = membership.id;
+          } else if (tier === "basic" && highestTier === "free") {
+            highestTier = "basic";
+            whopId = membership.id;
+          }
+        }
+      }
+    } else {
+      return new Response(JSON.stringify({ error: "No license key or Whop token provided" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const memberships: WhopMembership[] = await whopResponse.json();
-    
-    // Find highest active tier
-    let highestTier = "free";
-    let whopId = null;
-    
-    for (const membership of memberships) {
-      if (membership.valid && membership.status === "active") {
-        const productId = membership.product?.id;
-        const tier = TIER_MAP[productId];
-        
-        if (tier === "lifetime") {
-          highestTier = "lifetime";
-          whopId = membership.id;
-          break;
-        } else if (tier === "blackout" && highestTier !== "lifetime") {
-          highestTier = "blackout";
-          whopId = membership.id;
-        } else if (tier === "elite" && !["lifetime", "blackout"].includes(highestTier)) {
-          highestTier = "elite";
-          whopId = membership.id;
-        } else if (tier === "basic" && highestTier === "free") {
-          highestTier = "basic";
-          whopId = membership.id;
-        }
-      }
-    }
+    console.log("Final tier determined:", highestTier);
 
     // Get the profile first
     const { data: profile, error: profileFetchError } = await supabaseClient
@@ -127,27 +181,31 @@ serve(async (req) => {
       });
     }
 
-    // Update user profile tier
-    const { error: profileError } = await supabaseClient
-      .from("profiles")
-      .update({ tier: highestTier })
-      .eq("user_id", user.id);
+    // Use the security definer function to update tier (bypasses RLS)
+    const { error: tierUpdateError } = await supabaseClient.rpc("update_user_tier", {
+      profile_user_id: user.id,
+      new_tier: highestTier,
+    });
 
-    if (profileError) {
-      console.error("Profile update error:", profileError);
+    if (tierUpdateError) {
+      console.error("Tier update error:", tierUpdateError);
+    } else {
+      console.log("Tier updated successfully to:", highestTier);
     }
 
     // Update sensitive data in profile_secrets (server-side only table)
-    const { error: secretsError } = await supabaseClient
-      .from("profile_secrets")
-      .upsert({
-        profile_id: profile.id,
-        whop_id: whopId,
-        device_fingerprint: device_fingerprint || null,
-      }, { onConflict: "profile_id" });
+    if (whopId) {
+      const { error: secretsError } = await supabaseClient
+        .from("profile_secrets")
+        .upsert({
+          profile_id: profile.id,
+          whop_id: whopId,
+          device_fingerprint: device_fingerprint || null,
+        }, { onConflict: "profile_id" });
 
-    if (secretsError) {
-      console.error("Profile secrets update error:", secretsError);
+      if (secretsError) {
+        console.error("Profile secrets update error:", secretsError);
+      }
     }
 
     // Get usage limits based on tier
