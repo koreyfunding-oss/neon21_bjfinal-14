@@ -142,16 +142,18 @@ async function processUserTierUpdate(
   // Determine the new tier based on event type
   let newTier = "free";
   
-  if (eventType === "membership.went_valid" || eventType === "membership.created") {
-    // User purchased or subscription became valid
+  // Activation events - user purchased or subscription became valid
+  if (eventType === "membership.went_valid" || eventType === "membership.created" || eventType === "membership.activated") {
     if (productId && TIER_MAP[productId]) {
       newTier = TIER_MAP[productId];
     }
-  } else if (eventType === "membership.went_invalid" || eventType === "membership.deactivated" || eventType === "membership.cancelled") {
-    // User cancelled or subscription expired
+  } 
+  // Deactivation events - user cancelled or subscription expired
+  else if (eventType === "membership.went_invalid" || eventType === "membership.deactivated" || eventType === "membership.cancelled") {
     newTier = "free";
-  } else if (eventType === "membership.updated") {
-    // Check if still valid
+  } 
+  // Update events - check current status
+  else if (eventType === "membership.updated") {
     if (isValid && (status === "active" || status === "trialing")) {
       if (productId && TIER_MAP[productId]) {
         newTier = TIER_MAP[productId];
