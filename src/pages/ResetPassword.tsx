@@ -29,9 +29,14 @@ const ResetPassword = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     // Listen for auth state changes FIRST (recovery link will trigger this)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth event:', event, 'Session:', !!session);
+      if (!isMounted) return;
+      
       if (event === 'PASSWORD_RECOVERY') {
         setValidSession(true);
       } else if (event === 'SIGNED_IN' && session) {
@@ -54,36 +59,41 @@ const ResetPassword = () => {
       
       // If there's an error in the URL, show invalid state
       if (errorParam) {
-        setValidSession(false);
+        if (isMounted) setValidSession(false);
         return;
       }
       
       // If there's a code param, Supabase needs to exchange it
       if (code) {
-        // The auth state listener will handle the session after exchange
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error('Code exchange error:', error);
-          setValidSession(false);
+        try {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('Code exchange error:', error);
+            if (isMounted) setValidSession(false);
+          }
+          // Auth state listener will handle setting validSession on success
+        } catch (err) {
+          console.error('Code exchange exception:', err);
+          if (isMounted) setValidSession(false);
         }
         return;
       }
       
       // Check hash params (older flow)
       if (type === 'recovery' && accessToken) {
-        setValidSession(true);
+        if (isMounted) setValidSession(true);
         return;
       }
       
       // Check if there's already a valid session
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        setValidSession(true);
+        if (isMounted) setValidSession(true);
       } else {
-        // Give a short delay to allow auth events to fire
-        setTimeout(() => {
-          if (validSession === null) {
-            setValidSession(false);
+        // Give a short delay to allow auth events to fire, then mark as invalid
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            setValidSession((current) => current === null ? false : current);
           }
         }, 2000);
       }
@@ -91,7 +101,11 @@ const ResetPassword = () => {
     
     checkSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const validateInputs = () => {
