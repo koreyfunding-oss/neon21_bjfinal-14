@@ -7,7 +7,7 @@ interface PlayingCardProps {
   faceDown?: boolean;
   selected?: boolean;
   onClick?: () => void;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 const suitSymbols = {
@@ -25,6 +25,7 @@ const suitColors = {
 };
 
 const sizeClasses = {
+  xs: 'w-8 h-11 text-sm',
   sm: 'w-12 h-16 text-lg',
   md: 'w-16 h-22 text-xl',
   lg: 'w-20 h-28 text-2xl',
