@@ -310,6 +310,23 @@ export default function Index() {
     });
   }, []);
 
+  // Auto-populate all seats with random cards
+  const handleAutoPopulate = useCallback((cardsPerSeat: Map<number, string[]>) => {
+    playSound('cardSelect');
+    cardsPerSeat.forEach((cards, seatId) => {
+      cards.forEach(card => {
+        setDeckState(prev => trackCard(prev, card));
+      });
+    });
+    setOtherPlayersCards(prev => {
+      const newMap = new Map(prev);
+      cardsPerSeat.forEach((cards, seatId) => {
+        newMap.set(seatId, cards);
+      });
+      return newMap;
+    });
+  }, [playSound]);
+
   const handleCardsDetected = useCallback((result: ScanResult) => {
     // Accumulative card tracking - only track NEW cards that haven't been seen
     const currentScanCards: string[] = [];
@@ -597,6 +614,7 @@ export default function Index() {
                     onOtherPlayerCardAdd={handleOtherPlayerCardAdd}
                     onOtherPlayerCardRemove={handleOtherPlayerCardRemove}
                     onOtherPlayerClear={handleOtherPlayerClear}
+                    onAutoPopulate={handleAutoPopulate}
                   />
                 </div>
               </motion.div>

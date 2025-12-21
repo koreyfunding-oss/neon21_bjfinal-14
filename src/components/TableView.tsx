@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Users, Crown, ChevronDown, Sparkles, Plus, X, Trash2 } from 'lucide-react';
+import { User, Users, Crown, ChevronDown, Sparkles, Plus, X, Wand2, Trash2 } from 'lucide-react';
 import { PlayingCard, CardSelector } from './PlayingCard';
 import { 
   DeckState, 
@@ -8,6 +8,7 @@ import {
   getTrueCount,
   type CardPrediction 
 } from '@/lib/cardTracker';
+import { calculateHandTotal } from '@/lib/blackjackStrategy';
 import { cn } from '@/lib/utils';
 
 interface TableSeat {
@@ -16,6 +17,10 @@ interface TableSeat {
   cards: string[];
   isPlayer: boolean;
   isActive: boolean;
+  handTotal: number;
+  isSoft: boolean;
+  isBust: boolean;
+  isBlackjack: boolean;
 }
 
 interface TableViewProps {
@@ -29,6 +34,7 @@ interface TableViewProps {
   onOtherPlayerCardAdd: (seatId: number, card: string) => void;
   onOtherPlayerCardRemove: (seatId: number, cardIndex: number) => void;
   onOtherPlayerClear: (seatId: number) => void;
+  onAutoPopulate?: (cardsPerSeat: Map<number, string[]>) => void;
 }
 
 export function TableView({ 
@@ -41,31 +47,96 @@ export function TableView({
   otherPlayersCards,
   onOtherPlayerCardAdd,
   onOtherPlayerCardRemove,
-  onOtherPlayerClear
+  onOtherPlayerClear,
+  onAutoPopulate
 }: TableViewProps) {
   const [showPositionPicker, setShowPositionPicker] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   
   const predictions = getCardPredictions(deckState);
   const trueCount = getTrueCount(deckState);
+
+  // Calculate hand info for cards
+  const getHandInfo = (cards: string[]) => {
+    if (cards.length === 0) return { total: 0, soft: false, bust: false, blackjack: false };
+    const { total, soft } = calculateHandTotal(cards);
+    return {
+      total,
+      soft,
+      bust: total > 21,
+      blackjack: cards.length === 2 && total === 21
+    };
+  };
   
-  // Generate seats
+  // Generate seats with hand totals
   const seats: TableSeat[] = useMemo(() => {
-    return Array.from({ length: numSeats }, (_, i) => ({
-      id: i + 1,
-      name: i + 1 === playerPosition ? 'YOU' : `P${i + 1}`,
-      cards: i + 1 === playerPosition ? playerCards : (otherPlayersCards.get(i + 1) || []),
-      isPlayer: i + 1 === playerPosition,
-      isActive: (i + 1 === playerPosition && playerCards.length > 0) || (otherPlayersCards.get(i + 1)?.length || 0) > 0
-    }));
+    return Array.from({ length: numSeats }, (_, i) => {
+      const seatId = i + 1;
+      const cards = seatId === playerPosition ? playerCards : (otherPlayersCards.get(seatId) || []);
+      const handInfo = getHandInfo(cards);
+      
+      return {
+        id: seatId,
+        name: seatId === playerPosition ? 'YOU' : `P${seatId}`,
+        cards,
+        isPlayer: seatId === playerPosition,
+        isActive: cards.length > 0,
+        handTotal: handInfo.total,
+        isSoft: handInfo.soft,
+        isBust: handInfo.bust,
+        isBlackjack: handInfo.blackjack
+      };
+    });
   }, [numSeats, playerPosition, playerCards, otherPlayersCards]);
+
+  // Auto-populate random cards for other players
+  const handleAutoPopulate = () => {
+    if (!onAutoPopulate) return;
+    
+    // Get available cards from deck state
+    const availableCards: string[] = [];
+    const cardLabels = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    
+    cardLabels.forEach(card => {
+      const remaining = deckState.remaining[card] || 0;
+      for (let i = 0; i < remaining; i++) {
+        availableCards.push(card);
+      }
+    });
+    
+    // Shuffle available cards
+    const shuffled = [...availableCards].sort(() => Math.random() - 0.5);
+    
+    // Deal 2 cards to each empty seat (excluding player's seat)
+    const newCards = new Map<number, string[]>();
+    let cardIndex = 0;
+    
+    for (let seatId = 1; seatId <= numSeats; seatId++) {
+      if (seatId === playerPosition) continue;
+      if ((otherPlayersCards.get(seatId)?.length || 0) > 0) continue;
+      
+      if (cardIndex + 1 < shuffled.length) {
+        newCards.set(seatId, [shuffled[cardIndex], shuffled[cardIndex + 1]]);
+        cardIndex += 2;
+      }
+    }
+    
+    onAutoPopulate(newCards);
+  };
+
+  // Clear all other players
+  const handleClearAll = () => {
+    for (let seatId = 1; seatId <= numSeats; seatId++) {
+      if (seatId !== playerPosition && (otherPlayersCards.get(seatId)?.length || 0) > 0) {
+        onOtherPlayerClear(seatId);
+      }
+    }
+  };
 
   const handleSeatClick = (seatId: number) => {
     if (seatId === playerPosition) {
-      // Clicking your own seat does nothing special
       return;
     }
-    // Toggle seat selection for adding cards
     setSelectedSeat(selectedSeat === seatId ? null : seatId);
   };
 
@@ -77,6 +148,9 @@ export function TableView({
 
   // Position names for display
   const positionNames = ['First Base', 'Seat 2', 'Seat 3', 'Center', 'Seat 5', 'Seat 6', 'Third Base'];
+
+  // Count occupied seats
+  const occupiedSeats = seats.filter(s => s.cards.length > 0 && !s.isPlayer).length;
 
   return (
     <div className="space-y-4">
@@ -108,12 +182,36 @@ export function TableView({
         </div>
 
         {/* Table Arc with Seats */}
-        <div className="relative bg-gradient-to-b from-green-800/20 to-green-900/40 rounded-[100px_100px_0_0] border border-green-700/30 pt-8 pb-4 px-4 min-h-[180px]">
+        <div className="relative bg-gradient-to-b from-green-800/20 to-green-900/40 rounded-[100px_100px_0_0] border border-green-700/30 pt-8 pb-4 px-4 min-h-[200px]">
           {/* Felt pattern */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_100%)] rounded-[100px_100px_0_0]" />
           
+          {/* Auto-populate controls */}
+          <div className="absolute top-2 right-2 flex gap-1">
+            {onAutoPopulate && (
+              <button
+                onClick={handleAutoPopulate}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[9px] uppercase tracking-wider bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 transition-colors"
+                title="Auto-deal cards to empty seats"
+              >
+                <Wand2 className="w-3 h-3" />
+                Auto
+              </button>
+            )}
+            {occupiedSeats > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[9px] uppercase tracking-wider bg-destructive/20 border border-destructive/30 text-destructive hover:bg-destructive/30 transition-colors"
+                title="Clear all other players"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear
+              </button>
+            )}
+          </div>
+          
           {/* Seats arranged in arc */}
-          <div className="relative flex justify-center items-end gap-2">
+          <div className="relative flex justify-center items-end gap-2 mt-4">
             {seats.map((seat, index) => {
               // Calculate position along arc
               const angle = ((index - (numSeats - 1) / 2) / (numSeats - 1)) * 60;
@@ -140,10 +238,33 @@ export function TableView({
                   {!seat.isPlayer && seat.cards.length > 0 && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onOtherPlayerClear(seat.id); }}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:scale-110 transition-transform"
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:scale-110 transition-transform z-10"
                     >
                       <X className="w-2.5 h-2.5" />
                     </button>
+                  )}
+                  
+                  {/* Hand total badge - shows above cards when there are cards */}
+                  {seat.cards.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className={cn(
+                        'absolute -top-3 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold z-10',
+                        seat.isBlackjack 
+                          ? 'bg-yellow-500 text-yellow-950 shadow-[0_0_8px_rgba(234,179,8,0.5)]'
+                          : seat.isBust 
+                            ? 'bg-destructive text-destructive-foreground'
+                            : seat.handTotal >= 17
+                              ? 'bg-green-500/80 text-white'
+                              : seat.handTotal >= 12
+                                ? 'bg-amber-500/80 text-white'
+                                : 'bg-muted text-foreground'
+                      )}
+                    >
+                      {seat.isBlackjack ? 'BJ!' : seat.isBust ? 'BUST' : seat.handTotal}
+                      {seat.isSoft && !seat.isBlackjack && !seat.isBust && <span className="text-[8px] ml-0.5">s</span>}
+                    </motion.div>
                   )}
                   
                   {/* Seat indicator */}
