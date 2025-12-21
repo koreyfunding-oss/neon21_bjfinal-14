@@ -96,9 +96,18 @@ export function CardTracker({ deckState, onReset }: CardTrackerProps) {
       <div>
         <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Next Card Probability</p>
         <div className="grid grid-cols-4 gap-1">
-          {predictions.slice(0, 8).map(({ card, probability, remainingCount }) => (
+          {predictions.slice(0, 8).map(({ card, probability, remainingCount }, index) => (
             <motion.div
               key={card}
+              initial={{ opacity: 0, y: 20, scale: 0.8 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ 
+                delay: index * 0.05, 
+                duration: 0.3,
+                type: "spring",
+                stiffness: 200,
+                damping: 15
+              }}
               className="p-2 rounded bg-secondary/50 text-center border border-border hover:border-primary/50 transition-colors"
               whileHover={{ scale: 1.05 }}
             >
