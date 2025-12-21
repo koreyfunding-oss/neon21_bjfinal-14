@@ -101,6 +101,7 @@ export default function Index() {
   }, [bettingStrategy, baseUnit, session.currentStreak]);
 
   const isPremium = profile?.tier !== 'free';
+  const isElite = profile?.tier === 'elite' || profile?.tier === 'blackout' || profile?.tier === 'lifetime';
 
   useEffect(() => { initializeSecurity(); }, []);
   // Speech only enabled for premium users
@@ -115,6 +116,13 @@ export default function Index() {
       navigate('/auth');
     }
   }, [loading, user, navigate]);
+  
+  // Auto-enable turbo mode for Elite+ users
+  useEffect(() => {
+    if (isElite && !turboMode) {
+      setTurboMode(true);
+    }
+  }, [isElite]);
 
   const usageLimits = getUsageLimits();
 
@@ -474,6 +482,7 @@ export default function Index() {
                   isActive={screenCaptureActive} 
                   onToggle={() => { setScreenCaptureActive(!screenCaptureActive); if (cameraActive) setCameraActive(false); }}
                   isPremium={isPremium}
+                  isElite={isElite}
                   turboMode={turboMode}
                   onTurboToggle={() => setTurboMode(!turboMode)}
                 />
