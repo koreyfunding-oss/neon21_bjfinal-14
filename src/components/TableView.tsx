@@ -294,9 +294,9 @@ export function TableView({
             )}
           </div>
           
-          {/* Seats arranged in arc */}
+          {/* Seats arranged in arc - reversed so seat 1 (first base) is on the right */}
           <div className="relative flex justify-center items-end gap-2 mt-4">
-            {seats.map((seat, index) => {
+            {[...seats].reverse().map((seat, index) => {
               // Calculate position along arc
               const angle = ((index - (numSeats - 1) / 2) / (numSeats - 1)) * 60;
               const yOffset = Math.abs(angle) * 0.8;
