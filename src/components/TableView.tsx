@@ -21,7 +21,80 @@ interface TableSeat {
   isSoft: boolean;
   isBust: boolean;
   isBlackjack: boolean;
+  winProb: number;
+  loseProb: number;
+  pushProb: number;
 }
+
+// Win probability lookup based on player total vs dealer upcard (simplified EV model)
+const getWinProbability = (playerTotal: number, isSoft: boolean, dealerUpcard: string | null): { win: number; lose: number; push: number } => {
+  if (!dealerUpcard || playerTotal === 0) return { win: 0, lose: 0, push: 0 };
+  
+  // Player busts - 100% loss
+  if (playerTotal > 21) return { win: 0, lose: 100, push: 0 };
+  
+  // Player has blackjack
+  if (playerTotal === 21 && !isSoft) {
+    // Dealer showing A or 10-value has chance of BJ push
+    const dealerVal = dealerUpcard === 'A' ? 11 : ['10', 'J', 'Q', 'K'].includes(dealerUpcard) ? 10 : parseInt(dealerUpcard);
+    if (dealerVal === 11) return { win: 65, lose: 4, push: 31 }; // Dealer has ~31% chance of BJ with A showing
+    if (dealerVal === 10) return { win: 92, lose: 0, push: 8 }; // Dealer has ~8% chance of BJ with 10 showing
+    return { win: 100, lose: 0, push: 0 };
+  }
+  
+  const dealerVal = dealerUpcard === 'A' ? 11 : ['10', 'J', 'Q', 'K'].includes(dealerUpcard) ? 10 : parseInt(dealerUpcard);
+  
+  // Dealer bust probabilities by upcard
+  const dealerBustProb: Record<number, number> = {
+    2: 35, 3: 37, 4: 40, 5: 42, 6: 42, 7: 26, 8: 24, 9: 23, 10: 23, 11: 17
+  };
+  
+  const bustProb = dealerBustProb[dealerVal] || 25;
+  
+  // Expected dealer final totals (simplified distribution)
+  // Lower upcards = more likely to bust, high cards = likely 17-20
+  const dealerStrength = dealerVal >= 7 ? 0.7 : dealerVal >= 4 ? 0.5 : 0.4;
+  
+  // Base win calculation
+  let winProb: number;
+  let pushProb: number;
+  
+  if (playerTotal === 21) {
+    winProb = bustProb + (100 - bustProb) * 0.85;
+    pushProb = (100 - bustProb) * 0.10;
+  } else if (playerTotal === 20) {
+    winProb = bustProb + (100 - bustProb) * 0.70;
+    pushProb = (100 - bustProb) * 0.18;
+  } else if (playerTotal === 19) {
+    winProb = bustProb + (100 - bustProb) * 0.55;
+    pushProb = (100 - bustProb) * 0.15;
+  } else if (playerTotal === 18) {
+    winProb = bustProb + (100 - bustProb) * 0.40;
+    pushProb = (100 - bustProb) * 0.14;
+  } else if (playerTotal === 17) {
+    winProb = bustProb + (100 - bustProb) * 0.25;
+    pushProb = (100 - bustProb) * 0.14;
+  } else if (playerTotal >= 12) {
+    // Standing on 12-16 is risky
+    winProb = bustProb * 0.9;
+    pushProb = 3;
+  } else {
+    // Low totals - assume player will hit (simplified)
+    winProb = 40 - (12 - playerTotal) * 2;
+    pushProb = 8;
+  }
+  
+  // Adjust for dealer strength
+  winProb = winProb * (1 - dealerStrength * 0.2);
+  
+  const loseProb = Math.max(0, 100 - winProb - pushProb);
+  
+  return {
+    win: Math.round(Math.min(100, Math.max(0, winProb))),
+    lose: Math.round(Math.min(100, Math.max(0, loseProb))),
+    push: Math.round(Math.min(100, Math.max(0, pushProb)))
+  };
+};
 
 interface TableViewProps {
   deckState: DeckState;
@@ -68,12 +141,13 @@ export function TableView({
     };
   };
   
-  // Generate seats with hand totals
+  // Generate seats with hand totals and probabilities
   const seats: TableSeat[] = useMemo(() => {
     return Array.from({ length: numSeats }, (_, i) => {
       const seatId = i + 1;
       const cards = seatId === playerPosition ? playerCards : (otherPlayersCards.get(seatId) || []);
       const handInfo = getHandInfo(cards);
+      const probs = getWinProbability(handInfo.total, handInfo.soft, dealerUpcard);
       
       return {
         id: seatId,
@@ -84,10 +158,13 @@ export function TableView({
         handTotal: handInfo.total,
         isSoft: handInfo.soft,
         isBust: handInfo.bust,
-        isBlackjack: handInfo.blackjack
+        isBlackjack: handInfo.blackjack,
+        winProb: probs.win,
+        loseProb: probs.lose,
+        pushProb: probs.push
       };
     });
-  }, [numSeats, playerPosition, playerCards, otherPlayersCards]);
+  }, [numSeats, playerPosition, playerCards, otherPlayersCards, dealerUpcard]);
 
   // Auto-populate random cards for other players
   const handleAutoPopulate = () => {
@@ -264,6 +341,28 @@ export function TableView({
                     >
                       {seat.isBlackjack ? 'BJ!' : seat.isBust ? 'BUST' : seat.handTotal}
                       {seat.isSoft && !seat.isBlackjack && !seat.isBust && <span className="text-[8px] ml-0.5">s</span>}
+                    </motion.div>
+                  )}
+                  
+                  {/* Win/Loss probability - shows below the seat when dealer upcard exists */}
+                  {seat.cards.length > 0 && dealerUpcard && !seat.isBust && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute -bottom-5 left-1/2 -translate-x-1/2 flex gap-0.5 text-[8px] font-mono"
+                    >
+                      <span className={cn(
+                        'px-1 py-0.5 rounded-l',
+                        seat.winProb >= 50 ? 'bg-green-500/30 text-green-400' : 'bg-green-500/20 text-green-400/70'
+                      )}>
+                        W:{seat.winProb}%
+                      </span>
+                      <span className={cn(
+                        'px-1 py-0.5 rounded-r',
+                        seat.loseProb >= 50 ? 'bg-red-500/30 text-red-400' : 'bg-red-500/20 text-red-400/70'
+                      )}>
+                        L:{seat.loseProb}%
+                      </span>
                     </motion.div>
                   )}
                   
