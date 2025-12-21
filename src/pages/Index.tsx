@@ -356,7 +356,7 @@ export default function Index() {
         {profile && <SubscriptionBadge tier={profile.tier} />}
         <motion.button 
           onClick={() => { refetchProfile(); toast.success('Membership status synced'); }} 
-          className="group relative overflow-hidden px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all duration-300"
+          className="group relative overflow-hidden px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bold text-xs uppercase tracking-wider animate-pulse-glow transition-all duration-300"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           title="Sync Membership"
