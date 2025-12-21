@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Users, Crown, ChevronDown, Sparkles, Plus, X, Wand2, Trash2, Trophy } from 'lucide-react';
 import { PlayingCard, CardSelector } from './PlayingCard';
@@ -125,9 +125,28 @@ export function TableView({
 }: TableViewProps) {
   const [showPositionPicker, setShowPositionPicker] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+  const [highestCard, setHighestCard] = useState<string | null>(null);
+  const [cardJustChanged, setCardJustChanged] = useState(false);
+  const prevHighestCardRef = useRef<string | null>(null);
   
   const predictions = getCardPredictions(deckState);
   const trueCount = getTrueCount(deckState);
+  
+  // Track highest probability card changes
+  useEffect(() => {
+    if (predictions.length === 0) return;
+    
+    const maxProb = Math.max(...predictions.slice(0, 12).map(p => p.probability));
+    const newHighest = predictions.find(p => p.probability === maxProb)?.card || null;
+    
+    if (newHighest && prevHighestCardRef.current && newHighest !== prevHighestCardRef.current) {
+      setCardJustChanged(true);
+      setTimeout(() => setCardJustChanged(false), 600);
+    }
+    
+    prevHighestCardRef.current = newHighest;
+    setHighestCard(newHighest);
+  }, [predictions]);
 
   // Calculate hand info for cards
   const getHandInfo = (cards: string[]) => {
@@ -532,9 +551,10 @@ export function TableView({
           const maxProb = Math.max(...displayPredictions.map(p => p.probability));
           
           return (
-            <div className="flex gap-1 overflow-x-auto pb-2">
+            <div className="flex gap-1 overflow-x-auto pb-2 relative">
               {displayPredictions.map((pred, index) => {
                 const isHighest = pred.probability === maxProb;
+                const isNewHighest = isHighest && cardJustChanged && pred.card === highestCard;
                 
                 return (
                   <motion.div
@@ -542,17 +562,19 @@ export function TableView({
                     initial={{ opacity: 0, y: 15, scale: 0.8 }}
                     animate={{ 
                       opacity: 1, 
-                      y: 0, 
-                      scale: isHighest ? 1.05 : 1,
+                      y: isNewHighest ? [0, -8, 0] : 0, 
+                      scale: isNewHighest ? [1, 1.2, 1.08] : isHighest ? 1.05 : 1,
                       boxShadow: isHighest 
                         ? ['0 0 15px hsl(var(--primary)/0.5)', '0 0 25px hsl(var(--primary)/0.8)', '0 0 15px hsl(var(--primary)/0.5)']
                         : '0 0 0px transparent'
                     }}
                     transition={{ 
-                      delay: index * 0.04,
+                      delay: isNewHighest ? 0 : index * 0.04,
                       type: "spring",
-                      stiffness: 200,
-                      damping: 15,
+                      stiffness: isNewHighest ? 300 : 200,
+                      damping: isNewHighest ? 10 : 15,
+                      y: isNewHighest ? { duration: 0.4, ease: "easeOut" } : undefined,
+                      scale: isNewHighest ? { duration: 0.4, ease: "easeOut" } : undefined,
                       boxShadow: isHighest ? {
                         duration: 1.5,
                         repeat: Infinity,
@@ -568,11 +590,29 @@ export function TableView({
                           : 'bg-secondary/30 border-border/50'
                     )}
                   >
+                    {/* Change flash effect */}
+                    {isNewHighest && (
+                      <motion.div
+                        initial={{ opacity: 0.8, scale: 1 }}
+                        animate={{ opacity: 0, scale: 2.5 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className="absolute inset-0 rounded-lg bg-primary/50 pointer-events-none"
+                      />
+                    )}
+                    
                     {/* Highest probability indicator */}
                     {isHighest && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, scale: 0, rotate: -180 }}
+                        animate={{ 
+                          opacity: 1, 
+                          scale: isNewHighest ? [0, 1.3, 1] : 1,
+                          rotate: isNewHighest ? [-180, 0] : 0
+                        }}
+                        transition={{ 
+                          duration: isNewHighest ? 0.4 : 0.2,
+                          ease: "easeOut"
+                        }}
                         className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-primary flex items-center justify-center"
                       >
                         <Sparkles className="w-2 h-2 text-primary-foreground" />
