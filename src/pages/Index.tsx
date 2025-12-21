@@ -162,13 +162,22 @@ export default function Index() {
     }
   }, [aggressionMode, tableState.trueCount, deckState.penetration, numDecks, canUseCIS, refetchProfile]);
 
+  // Trigger CIS evaluation when hand changes - use refs to avoid infinite loops
+  const cisEvaluatedRef = useRef<string | null>(null);
+  
   useEffect(() => {
     if (analysis && playerCards.length >= 2 && dealerUpcard) {
-      callCISEvaluate(playerCards, dealerUpcard);
+      // Create a key to track if we've already evaluated this exact hand
+      const handKey = `${playerCards.join(',')}-${dealerUpcard}-${aggressionMode}`;
+      if (cisEvaluatedRef.current !== handKey) {
+        cisEvaluatedRef.current = handKey;
+        callCISEvaluate(playerCards, dealerUpcard);
+      }
     } else {
       setCisAnalysis(null);
+      cisEvaluatedRef.current = null;
     }
-  }, [analysis, playerCards, dealerUpcard]);
+  }, [analysis, playerCards, dealerUpcard, aggressionMode, callCISEvaluate]);
 
   // Show quick action overlay in turbo mode
   useEffect(() => {
