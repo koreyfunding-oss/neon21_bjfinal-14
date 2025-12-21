@@ -10,6 +10,7 @@ import { HitProbability } from '@/components/HitProbability';
 import { SideBetPrediction } from '@/components/SideBetPrediction';
 import { SeatRecommendation } from '@/components/SeatRecommendation';
 import { TableCards } from '@/components/TableCards';
+import { TableView } from '@/components/TableView';
 import { CameraScanner, type ScanResult } from '@/components/CameraScanner';
 import { ScreenScanner } from '@/components/ScreenScanner';
 import { QuickAction } from '@/components/QuickAction';
@@ -42,7 +43,7 @@ import { calculateHeatIndex, type AggressionMode, type CISAnalysis } from '@/lib
 import { initializeSecurity, generateWatermark } from '@/lib/security';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { cn } from '@/lib/utils';
-import { Shield, Eye, EyeOff, Settings, LogOut, Volume2, VolumeX, RefreshCw, Sparkles, Crown } from 'lucide-react';
+import { Shield, Eye, EyeOff, Settings, LogOut, Volume2, VolumeX, RefreshCw, Sparkles, Crown, Menu } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -75,11 +76,13 @@ export default function Index() {
   const [allSeenCards, setAllSeenCards] = useState<Set<string>>(new Set()); // Track all cards seen during session
   const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
   const [bankroll, setBankroll] = useState(500);
+  const [playerPosition, setPlayerPosition] = useState(4); // Default to center seat
   const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled, announceAction, announceNewCards, announceHotSeat, setSpeechEnabled } = useSoundEffects();
   const [speechEnabled, setSpeechEnabledState] = useState(true);
   const lastAnnouncedActionRef = useRef<string | null>(null);
   const [announcedHotSeat, setAnnouncedHotSeat] = useState<number | null>(null);
   const lastHotSeatRef = useRef<number | null>(null);
+  const [showControls, setShowControls] = useState(false);
 
   // Calculate current bet based on strategy
   const currentBet = useMemo(() => {
@@ -360,47 +363,46 @@ export default function Index() {
       />
       
       <div className="fixed inset-0 pointer-events-none"><div className="scan-line absolute inset-0" /></div>
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+      {/* Compact top bar */}
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-2">
         {profile && <SubscriptionBadge tier={profile.tier} />}
-        {/* Only show Activate Membership button for free tier users */}
         {profile?.tier === 'free' ? (
           <motion.button 
-            onClick={() => { refetchProfile(); toast.success('Membership status synced'); }} 
-            className="group relative overflow-hidden px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bold text-xs uppercase tracking-wider animate-pulse-glow transition-all duration-300"
+            onClick={() => { refetchProfile(); toast.success('Membership synced'); }} 
+            className="group relative overflow-hidden px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bold text-[10px] uppercase tracking-wider animate-pulse-glow transition-all"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            title="Activate Membership"
           >
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-            <span className="absolute inset-0 bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <span className="relative flex items-center gap-2">
-              <Crown className="w-4 h-4" />
-              <span>Activate Membership</span>
-              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+            <span className="relative flex items-center gap-1.5">
+              <Crown className="w-3 h-3" />
+              <span>Activate</span>
             </span>
           </motion.button>
         ) : (
           <motion.button 
-            onClick={() => { refetchProfile(); toast.success('Membership synced'); }} 
-            className="p-2 rounded-full bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors"
+            onClick={() => { refetchProfile(); toast.success('Synced'); }} 
+            className="p-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            title="Sync Membership"
+            title="Sync"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </motion.button>
         )}
-        {profile?.tier === 'free' && <TrialCountdown createdAt={profile.created_at} />}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 backdrop-blur-sm">
-          <Shield className="w-3 h-3 text-green-400" /><span className="text-[10px] text-green-400 font-mono">{securityBadge}</span>
-        </div>
+        <button 
+          onClick={() => setShowControls(!showControls)}
+          className={cn('p-1.5 rounded-full border transition-colors', showControls ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary/50 border-border text-muted-foreground')}
+        >
+          <Menu className="w-4 h-4" />
+        </button>
         {user && (
           <button 
             onClick={() => { signOut(); navigate('/auth'); }} 
-            className="p-2 rounded-full bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive/20 transition-colors"
+            className="p-1.5 rounded-full bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive/20"
             title="Sign Out"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-3 h-3" />
           </button>
         )}
       </div>
@@ -408,53 +410,67 @@ export default function Index() {
       <div className="relative z-10 container mx-auto px-3 py-3 max-w-7xl">
         <NeonHeader />
 
-        <div className="flex items-center justify-between mt-3 mb-3 gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Decks:</span>
-            <div className="flex gap-1">
-              {[1, 2, 4, 6, 8].map(d => (
-                <button key={d} onClick={() => handleDeckChange(d)} className={cn('w-7 h-7 rounded text-xs font-display transition-all', numDecks === d ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-muted-foreground hover:text-foreground')}>{d}</button>
-              ))}
-            </div>
-          </div>
-          <div className="flex-1 max-w-sm"><AggressionSelector value={aggressionMode} onChange={setAggressionMode} /></div>
-          <div className="flex items-center gap-2">
-            <SoundToggle enabled={soundEnabled} onToggle={() => { playSound('click'); setSoundEnabled(!soundEnabled); }} />
-            <button 
-              onClick={() => { 
-                if (!isPremium) return;
-                playSound('click'); 
-                setSpeechEnabledState(!speechEnabled); 
-              }} 
-              className={cn(
-                'p-1.5 rounded-lg border transition-all relative',
-                !isPremium 
-                  ? 'border-border bg-secondary text-muted-foreground opacity-50 cursor-not-allowed' 
-                  : speechEnabled 
-                    ? 'border-primary bg-primary/10 text-primary' 
-                    : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
-              )}
-              title={!isPremium ? 'Voice announcements (Premium feature)' : speechEnabled ? 'Voice announcements on' : 'Voice announcements off'}
+        {/* Expandable Controls Panel */}
+        <AnimatePresence>
+          {showControls && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }} 
+              animate={{ opacity: 1, height: 'auto' }} 
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mb-3"
             >
-              {speechEnabled && isPremium ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              {!isPremium && (
-                <span className="absolute -top-1 -right-1 text-[6px] bg-yellow-500 text-yellow-950 px-1 rounded font-bold">PRO</span>
-              )}
-            </button>
-            <button onClick={() => { playSound('click'); setShowSettings(!showSettings); }} className={cn('p-1.5 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-4 h-4" /></button>
-            <button onClick={() => { playSound('click'); setShowAdvanced(!showAdvanced); }} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground hover:text-primary transition-colors">
-              {showAdvanced ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}{showAdvanced ? 'Simple' : 'Advanced'}
-            </button>
-          </div>
-        </div>
+              <div className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Decks:</span>
+                    <div className="flex gap-1">
+                      {[1, 2, 4, 6, 8].map(d => (
+                        <button key={d} onClick={() => handleDeckChange(d)} className={cn('w-6 h-6 rounded text-[10px] font-display transition-all', numDecks === d ? 'bg-primary text-primary-foreground shadow-neon' : 'bg-secondary text-muted-foreground hover:text-foreground')}>{d}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex-1 max-w-xs"><AggressionSelector value={aggressionMode} onChange={setAggressionMode} /></div>
+                  <div className="flex items-center gap-1.5">
+                    <SoundToggle enabled={soundEnabled} onToggle={() => { playSound('click'); setSoundEnabled(!soundEnabled); }} />
+                    <button 
+                      onClick={() => { if (isPremium) { playSound('click'); setSpeechEnabledState(!speechEnabled); }}} 
+                      className={cn('p-1.5 rounded-lg border transition-all relative', !isPremium ? 'opacity-50 cursor-not-allowed' : speechEnabled ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}
+                      title={!isPremium ? 'Voice (Pro)' : speechEnabled ? 'Voice on' : 'Voice off'}
+                    >
+                      {speechEnabled && isPremium ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                    </button>
+                    <button onClick={() => { playSound('click'); setShowSettings(!showSettings); }} className={cn('p-1.5 rounded-lg border transition-all', showSettings ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary text-muted-foreground')}><Settings className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                {showSettings && (
+                  <BetSizing heatIndex={heatIndex} trueCount={tableState.trueCount} baseUnit={baseUnit} aggressionMode={aggressionMode} onBaseUnitChange={setBaseUnit} />
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-green-500/10 border border-green-500/30">
+                    <Shield className="w-3 h-3 text-green-400" /><span className="text-[9px] text-green-400 font-mono">{securityBadge}</span>
+                  </div>
+                  {profile?.tier === 'free' && <TrialCountdown createdAt={profile.created_at} />}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <AnimatePresence>{showSettings && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-3 overflow-hidden">
-            <div className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
-              <BetSizing heatIndex={heatIndex} trueCount={tableState.trueCount} baseUnit={baseUnit} aggressionMode={aggressionMode} onBaseUnitChange={setBaseUnit} />
-            </div>
-          </motion.div>
-        )}</AnimatePresence>
+        {/* Mode toggle */}
+        <div className="flex items-center justify-center mb-3">
+          <button 
+            onClick={() => { playSound('click'); setShowAdvanced(!showAdvanced); }} 
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-display uppercase tracking-wider transition-all',
+              showAdvanced 
+                ? 'bg-primary text-primary-foreground border-primary shadow-neon' 
+                : 'bg-secondary text-muted-foreground border-border hover:text-foreground'
+            )}
+          >
+            {showAdvanced ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            {showAdvanced ? 'Table View' : 'Simple Mode'}
+          </button>
+        </div>
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-4">
           <div className="space-y-4">
@@ -525,6 +541,20 @@ export default function Index() {
             />
 
             <AnimatePresence>{showAdvanced && (<>
+              {/* Table View with positions and card sequence */}
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                <div className="p-4 rounded-xl border border-primary/30 bg-card/80 backdrop-blur-sm">
+                  <TableView 
+                    deckState={deckState}
+                    playerCards={playerCards}
+                    dealerUpcard={dealerUpcard}
+                    playerPosition={playerPosition}
+                    onPositionChange={setPlayerPosition}
+                    numSeats={7}
+                  />
+                </div>
+              </motion.div>
+              
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 <div className="p-4 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
                   <div className="flex items-center justify-between mb-3">
