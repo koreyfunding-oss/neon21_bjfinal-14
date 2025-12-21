@@ -75,18 +75,23 @@ serve(async (req) => {
     const whopSignature = req.headers.get("whop-signature");
     const webhookSecret = Deno.env.get("WHOP_WEBHOOK_SECRET");
 
-    // Verify signature if secret is configured
-    if (webhookSecret) {
-      const isValid = await verifyWebhookSignature(rawBody, whopSignature, webhookSecret);
-      if (!isValid) {
-        console.error("Invalid webhook signature - rejecting request");
-        return new Response(
-          JSON.stringify({ error: "Invalid signature" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    } else {
-      console.warn("WHOP_WEBHOOK_SECRET not configured - skipping signature verification");
+    // SECURITY: Require webhook secret to be configured
+    if (!webhookSecret) {
+      console.error("WHOP_WEBHOOK_SECRET not configured - webhook endpoint is disabled for security");
+      return new Response(
+        JSON.stringify({ error: "Webhook not configured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify signature - always required
+    const isValid = await verifyWebhookSignature(rawBody, whopSignature, webhookSecret);
+    if (!isValid) {
+      console.error("Invalid webhook signature - rejecting request");
+      return new Response(
+        JSON.stringify({ error: "Invalid signature" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const supabaseClient = createClient(
