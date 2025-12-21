@@ -42,7 +42,7 @@ import { calculateHeatIndex, type AggressionMode, type CISAnalysis } from '@/lib
 import { initializeSecurity, generateWatermark } from '@/lib/security';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { cn } from '@/lib/utils';
-import { Shield, Eye, EyeOff, Settings, LogOut, Volume2, VolumeX } from 'lucide-react';
+import { Shield, Eye, EyeOff, Settings, LogOut, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -354,6 +354,13 @@ export default function Index() {
       <div className="fixed inset-0 pointer-events-none"><div className="scan-line absolute inset-0" /></div>
       <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
         {profile && <SubscriptionBadge tier={profile.tier} />}
+        <button 
+          onClick={() => { refetchProfile(); toast.success('Subscription status refreshed'); }} 
+          className="p-2 rounded-full bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors"
+          title="Refresh Subscription"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
         {profile?.tier === 'free' && <TrialCountdown createdAt={profile.created_at} />}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 backdrop-blur-sm">
           <Shield className="w-3 h-3 text-green-400" /><span className="text-[10px] text-green-400 font-mono">{securityBadge}</span>
