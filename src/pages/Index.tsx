@@ -42,7 +42,7 @@ import { calculateHeatIndex, type AggressionMode, type CISAnalysis } from '@/lib
 import { initializeSecurity, generateWatermark } from '@/lib/security';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { cn } from '@/lib/utils';
-import { Shield, Eye, EyeOff, Settings, LogOut, Volume2, VolumeX, RefreshCw } from 'lucide-react';
+import { Shield, Eye, EyeOff, Settings, LogOut, Volume2, VolumeX, RefreshCw, Sparkles, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -354,13 +354,20 @@ export default function Index() {
       <div className="fixed inset-0 pointer-events-none"><div className="scan-line absolute inset-0" /></div>
       <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
         {profile && <SubscriptionBadge tier={profile.tier} />}
-        <button 
-          onClick={() => { refetchProfile(); toast.success('Subscription status refreshed'); }} 
-          className="p-2 rounded-full bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors"
-          title="Refresh Subscription"
+        <motion.button 
+          onClick={() => { refetchProfile(); toast.success('Membership status synced'); }} 
+          className="group relative overflow-hidden px-4 py-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all duration-300"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          title="Sync Membership"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+          <span className="absolute inset-0 bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <span className="relative flex items-center gap-2">
+            <Crown className="w-4 h-4" />
+            <span>Activate Membership</span>
+            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+          </span>
+        </motion.button>
         {profile?.tier === 'free' && <TrialCountdown createdAt={profile.created_at} />}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 backdrop-blur-sm">
           <Shield className="w-3 h-3 text-green-400" /><span className="text-[10px] text-green-400 font-mono">{securityBadge}</span>
