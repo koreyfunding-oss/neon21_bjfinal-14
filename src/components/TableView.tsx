@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Users, Crown, ChevronDown, Sparkles, Plus, X, Wand2, Trash2 } from 'lucide-react';
+import { User, Users, Crown, ChevronDown, Sparkles, Plus, X, Wand2, Trash2, Trophy } from 'lucide-react';
 import { PlayingCard, CardSelector } from './PlayingCard';
 import { 
   DeckState, 
@@ -166,7 +166,14 @@ export function TableView({
     });
   }, [numSeats, playerPosition, playerCards, otherPlayersCards, dealerUpcard]);
 
-  // Auto-populate random cards for other players
+  // Find the best seat (highest win probability among active seats)
+  const bestSeatId = useMemo(() => {
+    const activeSeats = seats.filter(s => s.cards.length > 0 && !s.isBust && dealerUpcard);
+    if (activeSeats.length < 2) return null; // Need at least 2 seats to compare
+    const best = activeSeats.reduce((a, b) => a.winProb > b.winProb ? a : b);
+    return best.winProb > 0 ? best.id : null;
+  }, [seats, dealerUpcard]);
+
   const handleAutoPopulate = () => {
     if (!onAutoPopulate) return;
     
@@ -294,6 +301,7 @@ export function TableView({
               const angle = ((index - (numSeats - 1) / 2) / (numSeats - 1)) * 60;
               const yOffset = Math.abs(angle) * 0.8;
               const isSelected = selectedSeat === seat.id;
+              const isBestSeat = bestSeatId === seat.id;
               
               return (
                 <motion.div
@@ -303,14 +311,27 @@ export function TableView({
                   transition={{ delay: index * 0.05 }}
                   className={cn(
                     'flex flex-col items-center p-2 rounded-lg transition-all cursor-pointer relative',
-                    seat.isPlayer 
-                      ? 'bg-primary/20 border-2 border-primary shadow-[0_0_15px_hsl(var(--primary)/0.3)]' 
-                      : isSelected
-                        ? 'bg-accent/30 border-2 border-accent shadow-[0_0_15px_hsl(var(--accent)/0.3)]'
-                        : 'bg-secondary/30 border border-border/50 hover:bg-secondary/50 hover:border-accent/50'
+                    isBestSeat && !seat.isPlayer
+                      ? 'bg-yellow-500/20 border-2 border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.4)]'
+                      : seat.isPlayer 
+                        ? 'bg-primary/20 border-2 border-primary shadow-[0_0_15px_hsl(var(--primary)/0.3)]' 
+                        : isSelected
+                          ? 'bg-accent/30 border-2 border-accent shadow-[0_0_15px_hsl(var(--accent)/0.3)]'
+                          : 'bg-secondary/30 border border-border/50 hover:bg-secondary/50 hover:border-accent/50'
                   )}
                   onClick={() => handleSeatClick(seat.id)}
                 >
+                  {/* Best seat trophy indicator */}
+                  {isBestSeat && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-yellow-500 text-yellow-950 flex items-center justify-center z-20 shadow-[0_0_10px_rgba(234,179,8,0.6)]"
+                    >
+                      <Trophy className="w-3 h-3" />
+                    </motion.div>
+                  )}
+                  
                   {/* Clear button for other players with cards */}
                   {!seat.isPlayer && seat.cards.length > 0 && (
                     <button
