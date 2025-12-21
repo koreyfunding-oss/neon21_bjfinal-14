@@ -100,7 +100,7 @@ serve(async (req) => {
     );
 
     const body = JSON.parse(rawBody);
-    console.log("Whop webhook received:", JSON.stringify(body, null, 2));
+    console.log("Webhook received:", body.type);
 
     const eventType = body.type;
     const data = body.data;
@@ -121,15 +121,7 @@ serve(async (req) => {
     const whopMembershipId = data.id;
     const licenseKey = data.license_key;
 
-    console.log("Parsed webhook data:", {
-      eventType,
-      userEmail,
-      productId,
-      membershipStatus,
-      isValid,
-      whopMembershipId,
-      licenseKey,
-    });
+    console.log("Processing event:", eventType, "product:", productId);
 
     // Handle membership events
     if (eventType.startsWith("membership.")) {
@@ -148,7 +140,6 @@ serve(async (req) => {
             if (membershipResponse.ok) {
               const membershipData = await membershipResponse.json();
               const fetchedEmail = membershipData.email;
-              console.log("Fetched email from Whop API:", fetchedEmail);
               
               if (fetchedEmail) {
                 await processUserTierUpdate(supabaseClient, fetchedEmail, productId, eventType, isValid, membershipStatus, whopMembershipId);
@@ -185,7 +176,7 @@ async function processUserTierUpdate(
   status: string | undefined,
   whopMembershipId: string | undefined
 ) {
-  console.log(`Processing tier update for ${email}, event: ${eventType}`);
+  console.log(`Processing tier update, event: ${eventType}`);
 
   // Find user by email in auth.users
   const { data: authUsers, error: authError } = await supabaseClient.auth.admin.listUsers();
@@ -202,7 +193,7 @@ async function processUserTierUpdate(
     return;
   }
 
-  console.log(`Found user: ${user.id} for email: ${email}`);
+  console.log("User found for tier update");
 
   // Determine the new tier based on event type
   let newTier = "free";
@@ -263,7 +254,7 @@ async function processUserTierUpdate(
     if (updateError) {
       console.error("Error updating tier:", updateError);
     } else {
-      console.log(`Successfully updated tier to ${newTier} for user ${user.id}`);
+      console.log(`Tier updated to ${newTier}`);
     }
 
     // Update profile_secrets with whop membership info

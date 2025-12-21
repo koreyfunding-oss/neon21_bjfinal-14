@@ -209,7 +209,7 @@ If no cards are visible, return all empty/null values with confidence: "none".`
       };
     }
 
-    console.log('Scan result:', JSON.stringify(cardData));
+    console.log('Scan completed, confidence:', cardData.confidence);
     
     return new Response(
       JSON.stringify(cardData),

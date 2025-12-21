@@ -83,7 +83,7 @@ serve(async (req) => {
 
     // License key validation flow
     if (license_key) {
-      console.log("Validating license key:", license_key.substring(0, 8) + "...");
+      console.log("Validating license key");
       
       const licenseResponse = await fetch(`https://api.whop.com/api/v5/license_keys/${encodeURIComponent(license_key)}`, {
         headers: {
@@ -103,7 +103,7 @@ serve(async (req) => {
       }
 
       const licenseData: WhopLicenseResponse = await licenseResponse.json();
-      console.log("License data:", JSON.stringify(licenseData, null, 2));
+      console.log("License validation status:", licenseData.valid ? "valid" : "invalid");
 
       if (licenseData.valid && licenseData.status === "active") {
         // Get product ID from membership or directly from license
@@ -190,7 +190,7 @@ serve(async (req) => {
     if (tierUpdateError) {
       console.error("Tier update error:", tierUpdateError);
     } else {
-      console.log("Tier updated successfully to:", highestTier);
+      console.log("Tier updated successfully");
     }
 
     // Update sensitive data in profile_secrets (server-side only table)
