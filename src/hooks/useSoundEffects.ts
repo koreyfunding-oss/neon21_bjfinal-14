@@ -15,7 +15,8 @@ type SoundType =
   | 'push'
   | 'blackjack'
   | 'warning'
-  | 'success';
+  | 'success'
+  | 'probabilityShift';
 
 const SOUND_CONFIGS: Record<SoundType, { frequency: number; duration: number; type: OscillatorType; gain: number; decay?: number }> = {
   click: { frequency: 800, duration: 0.05, type: 'square', gain: 0.1 },
@@ -33,6 +34,7 @@ const SOUND_CONFIGS: Record<SoundType, { frequency: number; duration: number; ty
   blackjack: { frequency: 1319, duration: 0.4, type: 'sine', gain: 0.25, decay: 0.3 },
   warning: { frequency: 350, duration: 0.15, type: 'square', gain: 0.1 },
   success: { frequency: 988, duration: 0.12, type: 'sine', gain: 0.18 },
+  probabilityShift: { frequency: 1100, duration: 0.08, type: 'sine', gain: 0.12, decay: 0.05 },
 };
 
 export function useSoundEffects() {
@@ -112,6 +114,42 @@ export function useSoundEffects() {
   const playBlackjackFanfare = useCallback(() => {
     playChord([659, 784, 988, 1319], 0.6);
   }, [playChord]);
+
+  // Quick two-tone chime for probability shift
+  const playProbabilityShift = useCallback(() => {
+    if (!enabledRef.current) return;
+
+    try {
+      const ctx = getAudioContext();
+      
+      // First tone - rising
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
+      gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.12);
+
+      // Second tone - confirmation ping
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1760, ctx.currentTime + 0.08);
+      gain2.gain.setValueAtTime(0.08, ctx.currentTime + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.08);
+      osc2.stop(ctx.currentTime + 0.2);
+    } catch (e) {
+      // Audio not supported
+    }
+  }, [getAudioContext]);
 
   // Speech synthesis for announcements
   const announce = useCallback((text: string, priority: boolean = false) => {
@@ -215,6 +253,7 @@ export function useSoundEffects() {
     playChord,
     playWinFanfare,
     playBlackjackFanfare,
+    playProbabilityShift,
     setEnabled,
     // Speech synthesis
     announce,

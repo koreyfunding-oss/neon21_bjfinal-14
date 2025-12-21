@@ -108,6 +108,7 @@ interface TableViewProps {
   onOtherPlayerCardRemove: (seatId: number, cardIndex: number) => void;
   onOtherPlayerClear: (seatId: number) => void;
   onAutoPopulate?: (cardsPerSeat: Map<number, string[]>) => void;
+  onProbabilityShift?: () => void;
 }
 
 export function TableView({ 
@@ -121,7 +122,8 @@ export function TableView({
   onOtherPlayerCardAdd,
   onOtherPlayerCardRemove,
   onOtherPlayerClear,
-  onAutoPopulate
+  onAutoPopulate,
+  onProbabilityShift
 }: TableViewProps) {
   const [showPositionPicker, setShowPositionPicker] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
@@ -141,12 +143,13 @@ export function TableView({
     
     if (newHighest && prevHighestCardRef.current && newHighest !== prevHighestCardRef.current) {
       setCardJustChanged(true);
+      onProbabilityShift?.();
       setTimeout(() => setCardJustChanged(false), 600);
     }
     
     prevHighestCardRef.current = newHighest;
     setHighestCard(newHighest);
-  }, [predictions]);
+  }, [predictions, onProbabilityShift]);
 
   // Calculate hand info for cards
   const getHandInfo = (cards: string[]) => {
