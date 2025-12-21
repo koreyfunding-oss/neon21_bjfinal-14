@@ -138,15 +138,14 @@ serve(async (req) => {
     // CIS Engine Logic (Server-side only)
     const result = calculateCIS(player_cards, dealer_card, aggression_mode, true_count, cards_seen, profile.tier);
 
-    // Update usage and log
-    await supabaseClient
-      .from("profiles")
-      .update({
-        daily_cis_used: profile.daily_cis_used + 1,
-        total_cis_runs: profile.total_cis_runs + 1,
-        xp: profile.xp + 10,
-      })
-      .eq("id", profile.id);
+    // Update usage via secure RPC function (enforces authorization)
+    const { error: usageError } = await supabaseClient.rpc("increment_cis_usage", {
+      profile_user_id: user.id,
+    });
+
+    if (usageError) {
+      console.error("Usage increment failed");
+    }
 
     // Log CIS decision
     await supabaseClient.from("cis_logs").insert({
