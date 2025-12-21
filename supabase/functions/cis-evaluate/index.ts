@@ -15,6 +15,57 @@ interface CISRequest {
   cards_seen?: number;
 }
 
+// Valid card format: A, 2-10, J, Q, K optionally followed by a suit
+const VALID_CARD_REGEX = /^(A|[2-9]|10|J|Q|K)(♠|♥|♦|♣)?$/;
+const VALID_AGGRESSION_MODES = ['conservative', 'standard', 'aggressive', 'hyper'];
+
+function validateCISRequest(body: unknown): { valid: boolean; error?: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+  
+  const request = body as Record<string, unknown>;
+  
+  // Validate player_cards
+  if (!Array.isArray(request.player_cards)) {
+    return { valid: false, error: 'player_cards must be an array' };
+  }
+  if (request.player_cards.length < 2 || request.player_cards.length > 10) {
+    return { valid: false, error: 'player_cards must contain 2-10 cards' };
+  }
+  for (const card of request.player_cards) {
+    if (typeof card !== 'string' || !VALID_CARD_REGEX.test(card)) {
+      return { valid: false, error: `Invalid card format: ${String(card).slice(0, 20)}` };
+    }
+  }
+  
+  // Validate dealer_card
+  if (typeof request.dealer_card !== 'string' || !VALID_CARD_REGEX.test(request.dealer_card)) {
+    return { valid: false, error: 'Invalid dealer_card format' };
+  }
+  
+  // Validate aggression_mode
+  if (typeof request.aggression_mode !== 'string' || !VALID_AGGRESSION_MODES.includes(request.aggression_mode)) {
+    return { valid: false, error: 'Invalid aggression_mode. Must be one of: conservative, standard, aggressive, hyper' };
+  }
+  
+  // Validate true_count (optional)
+  if (request.true_count !== undefined) {
+    if (typeof request.true_count !== 'number' || request.true_count < -50 || request.true_count > 50) {
+      return { valid: false, error: 'true_count must be a number between -50 and 50' };
+    }
+  }
+  
+  // Validate cards_seen (optional)
+  if (request.cards_seen !== undefined) {
+    if (typeof request.cards_seen !== 'number' || request.cards_seen < 0 || request.cards_seen > 500) {
+      return { valid: false, error: 'cards_seen must be a number between 0 and 500' };
+    }
+  }
+  
+  return { valid: true };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -72,7 +123,17 @@ serve(async (req) => {
     }
 
     const body: CISRequest = await req.json();
-    const { player_cards, dealer_card, bet_size, aggression_mode, true_count = 0, cards_seen = 0 } = body;
+    
+    // Input validation
+    const validationResult = validateCISRequest(body);
+    if (!validationResult.valid) {
+      return new Response(JSON.stringify({ error: validationResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    const { player_cards, dealer_card, aggression_mode, true_count = 0, cards_seen = 0 } = body;
 
     // CIS Engine Logic (Server-side only)
     const result = calculateCIS(player_cards, dealer_card, aggression_mode, true_count, cards_seen, profile.tier);
