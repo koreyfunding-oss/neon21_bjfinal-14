@@ -84,6 +84,16 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        'pulse-glow': {
+          '0%, 100%': { 
+            boxShadow: '0 0 20px rgba(234,179,8,0.4), 0 0 40px rgba(234,179,8,0.2)',
+            borderColor: 'rgba(250,204,21,1)'
+          },
+          '50%': { 
+            boxShadow: '0 0 30px rgba(234,179,8,0.6), 0 0 60px rgba(234,179,8,0.3)',
+            borderColor: 'rgba(253,224,71,1)'
+          },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },

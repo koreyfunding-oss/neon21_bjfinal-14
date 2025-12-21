@@ -312,8 +312,8 @@ export function TableView({
                   className={cn(
                     'flex flex-col items-center p-2 rounded-lg transition-all cursor-pointer relative',
                     isBestSeat && !seat.isPlayer
-                      ? 'bg-yellow-500/20 border-2 border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.4)]'
-                      : seat.isPlayer 
+                      ? 'bg-yellow-500/20 border-2 border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.4)] animate-[pulse-glow_2s_ease-in-out_infinite]'
+                      : seat.isPlayer
                         ? 'bg-primary/20 border-2 border-primary shadow-[0_0_15px_hsl(var(--primary)/0.3)]' 
                         : isSelected
                           ? 'bg-accent/30 border-2 border-accent shadow-[0_0_15px_hsl(var(--accent)/0.3)]'
