@@ -85,8 +85,8 @@ serve(async (req) => {
     }
 
     // Verify signature - always required
-    const isValid = await verifyWebhookSignature(rawBody, whopSignature, webhookSecret);
-    if (!isValid) {
+    const signatureValid = await verifyWebhookSignature(rawBody, whopSignature, webhookSecret);
+    if (!signatureValid) {
       console.error("Invalid webhook signature - rejecting request");
       return new Response(
         JSON.stringify({ error: "Invalid signature" }),
