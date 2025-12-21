@@ -361,6 +361,7 @@ export default function Index() {
           whileTap={{ scale: 0.95 }}
           title="Sync Membership"
         >
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
           <span className="absolute inset-0 bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <span className="relative flex items-center gap-2">
             <Crown className="w-4 h-4" />
