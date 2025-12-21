@@ -527,38 +527,81 @@ export function TableView({
         </div>
         
         {/* Predicted sequence */}
-        <div className="flex gap-1 overflow-x-auto pb-2">
-          {predictions.slice(0, 12).map((pred, index) => (
-            <motion.div
-              key={`${pred.card}-${index}`}
-              initial={{ opacity: 0, y: 15, scale: 0.8 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ 
-                delay: index * 0.04,
-                type: "spring",
-                stiffness: 200,
-                damping: 15
-              }}
-              className={cn(
-                'flex flex-col items-center p-1.5 rounded-lg border transition-all shrink-0',
-                index === 0 
-                  ? 'bg-primary/20 border-primary/50 shadow-[0_0_10px_hsl(var(--primary)/0.2)]' 
-                  : 'bg-secondary/30 border-border/50'
-              )}
-            >
-              <span className={cn(
-                'text-sm font-display font-bold',
-                pred.card === 'A' || pred.card === 'K' || pred.card === 'Q' || pred.card === 'J' || pred.card === '10'
-                  ? 'text-green-400'
-                  : parseInt(pred.card) <= 6 ? 'text-amber-400' : 'text-foreground'
-              )}>
-                {pred.card}
-              </span>
-              <span className="text-[9px] text-primary">{pred.probability.toFixed(0)}%</span>
-              <span className="text-[8px] text-muted-foreground">{pred.remainingCount}</span>
-            </motion.div>
-          ))}
-        </div>
+        {(() => {
+          const displayPredictions = predictions.slice(0, 12);
+          const maxProb = Math.max(...displayPredictions.map(p => p.probability));
+          
+          return (
+            <div className="flex gap-1 overflow-x-auto pb-2">
+              {displayPredictions.map((pred, index) => {
+                const isHighest = pred.probability === maxProb;
+                
+                return (
+                  <motion.div
+                    key={`${pred.card}-${index}`}
+                    initial={{ opacity: 0, y: 15, scale: 0.8 }}
+                    animate={{ 
+                      opacity: 1, 
+                      y: 0, 
+                      scale: isHighest ? 1.05 : 1,
+                      boxShadow: isHighest 
+                        ? ['0 0 15px hsl(var(--primary)/0.5)', '0 0 25px hsl(var(--primary)/0.8)', '0 0 15px hsl(var(--primary)/0.5)']
+                        : '0 0 0px transparent'
+                    }}
+                    transition={{ 
+                      delay: index * 0.04,
+                      type: "spring",
+                      stiffness: 200,
+                      damping: 15,
+                      boxShadow: isHighest ? {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      } : undefined
+                    }}
+                    className={cn(
+                      'flex flex-col items-center p-1.5 rounded-lg border transition-all shrink-0 relative',
+                      isHighest 
+                        ? 'bg-primary/30 border-primary ring-2 ring-primary/50 z-10' 
+                        : index === 0 
+                          ? 'bg-primary/20 border-primary/50' 
+                          : 'bg-secondary/30 border-border/50'
+                    )}
+                  >
+                    {/* Highest probability indicator */}
+                    {isHighest && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-primary flex items-center justify-center"
+                      >
+                        <Sparkles className="w-2 h-2 text-primary-foreground" />
+                      </motion.div>
+                    )}
+                    
+                    <span className={cn(
+                      'text-sm font-display font-bold',
+                      isHighest 
+                        ? 'text-primary drop-shadow-[0_0_8px_hsl(var(--primary))]'
+                        : pred.card === 'A' || pred.card === 'K' || pred.card === 'Q' || pred.card === 'J' || pred.card === '10'
+                          ? 'text-green-400'
+                          : parseInt(pred.card) <= 6 ? 'text-amber-400' : 'text-foreground'
+                    )}>
+                      {pred.card}
+                    </span>
+                    <span className={cn(
+                      'text-[9px]',
+                      isHighest ? 'text-primary font-bold' : 'text-primary'
+                    )}>
+                      {pred.probability.toFixed(0)}%
+                    </span>
+                    <span className="text-[8px] text-muted-foreground">{pred.remainingCount}</span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          );
+        })()}
         
         {/* Legend */}
         <div className="flex items-center gap-4 mt-2 text-[9px] text-muted-foreground">
