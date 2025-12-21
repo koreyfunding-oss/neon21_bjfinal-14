@@ -78,7 +78,7 @@ export default function Index() {
   const [bankroll, setBankroll] = useState(500);
   const [playerPosition, setPlayerPosition] = useState(4); // Default to center seat
   const [otherPlayersCards, setOtherPlayersCards] = useState<Map<number, string[]>>(new Map());
-  const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled, announceAction, announceNewCards, announceHotSeat, setSpeechEnabled } = useSoundEffects();
+  const { playSound, playWinFanfare, playBlackjackFanfare, playProbabilityShift, setEnabled, announceAction, announceNewCards, announceHotSeat, setSpeechEnabled } = useSoundEffects();
   const [speechEnabled, setSpeechEnabledState] = useState(true);
   const lastAnnouncedActionRef = useRef<string | null>(null);
   const [announcedHotSeat, setAnnouncedHotSeat] = useState<number | null>(null);
@@ -615,6 +615,7 @@ export default function Index() {
                     onOtherPlayerCardRemove={handleOtherPlayerCardRemove}
                     onOtherPlayerClear={handleOtherPlayerClear}
                     onAutoPopulate={handleAutoPopulate}
+                    onProbabilityShift={playProbabilityShift}
                   />
                 </div>
               </motion.div>
