@@ -77,6 +77,7 @@ export default function Index() {
   const [bettingStrategy, setBettingStrategy] = useState<BettingStrategy>('flat');
   const [bankroll, setBankroll] = useState(500);
   const [playerPosition, setPlayerPosition] = useState(4); // Default to center seat
+  const [otherPlayersCards, setOtherPlayersCards] = useState<Map<number, string[]>>(new Map());
   const { playSound, playWinFanfare, playBlackjackFanfare, setEnabled, announceAction, announceNewCards, announceHotSeat, setSpeechEnabled } = useSoundEffects();
   const [speechEnabled, setSpeechEnabledState] = useState(true);
   const lastAnnouncedActionRef = useRef<string | null>(null);
@@ -263,10 +264,51 @@ export default function Index() {
     setPlayerCards([]); setDealerUpcard(null); setAnalysis(null); setCisAnalysis(null); setActiveInput('player');
   }, []);
 
-  const handleResetDeck = useCallback(() => { setDeckState(createDeckState(numDecks)); setAllSeenCards(new Set()); }, [numDecks]);
-  const handleDeckChange = useCallback((d: number) => { setNumDecks(d); setDeckState(createDeckState(d)); setAllSeenCards(new Set()); }, []);
+  const handleResetDeck = useCallback(() => { setDeckState(createDeckState(numDecks)); setAllSeenCards(new Set()); setOtherPlayersCards(new Map()); }, [numDecks]);
+  const handleDeckChange = useCallback((d: number) => { setNumDecks(d); setDeckState(createDeckState(d)); setAllSeenCards(new Set()); setOtherPlayersCards(new Map()); }, []);
   const handleTableCardPlayed = useCallback((card: string) => setDeckState(prev => trackCard(prev, card)), []);
   const handleTableCardRemoved = useCallback((card: string) => setDeckState(prev => untrackCard(prev, card)), []);
+
+  // Other players card tracking
+  const handleOtherPlayerCardAdd = useCallback((seatId: number, card: string) => {
+    playSound('cardSelect');
+    setOtherPlayersCards(prev => {
+      const newMap = new Map(prev);
+      const currentCards = newMap.get(seatId) || [];
+      if (currentCards.length < 6) {
+        newMap.set(seatId, [...currentCards, card]);
+      }
+      return newMap;
+    });
+    setDeckState(prev => trackCard(prev, card));
+  }, [playSound]);
+
+  const handleOtherPlayerCardRemove = useCallback((seatId: number, cardIndex: number) => {
+    playSound('cardDeselect');
+    setOtherPlayersCards(prev => {
+      const newMap = new Map(prev);
+      const currentCards = newMap.get(seatId) || [];
+      const cardToRemove = currentCards[cardIndex];
+      if (cardToRemove) {
+        setDeckState(prevDeck => untrackCard(prevDeck, cardToRemove));
+        newMap.set(seatId, currentCards.filter((_, i) => i !== cardIndex));
+      }
+      return newMap;
+    });
+  }, [playSound]);
+
+  const handleOtherPlayerClear = useCallback((seatId: number) => {
+    setOtherPlayersCards(prev => {
+      const newMap = new Map(prev);
+      const currentCards = newMap.get(seatId) || [];
+      // Untrack all cards from this seat
+      currentCards.forEach(card => {
+        setDeckState(prevDeck => untrackCard(prevDeck, card));
+      });
+      newMap.delete(seatId);
+      return newMap;
+    });
+  }, []);
 
   const handleCardsDetected = useCallback((result: ScanResult) => {
     // Accumulative card tracking - only track NEW cards that haven't been seen
@@ -349,7 +391,7 @@ export default function Index() {
     playSound('cardSelect');
   }, [playSound]);
 
-  const handleResetSession = useCallback(() => { setSession(initialSession); setDeckState(createDeckState(numDecks)); setAllSeenCards(new Set()); }, [numDecks]);
+  const handleResetSession = useCallback(() => { setSession(initialSession); setDeckState(createDeckState(numDecks)); setAllSeenCards(new Set()); setOtherPlayersCards(new Map()); }, [numDecks]);
   const { total, soft } = playerCards.length >= 1 ? calculateHandTotal(playerCards) : { total: 0, soft: false };
   const bustProbability = dealerUpcard ? getDealerBustProbability(dealerUpcard) : 0;
 
@@ -551,6 +593,10 @@ export default function Index() {
                     playerPosition={playerPosition}
                     onPositionChange={setPlayerPosition}
                     numSeats={7}
+                    otherPlayersCards={otherPlayersCards}
+                    onOtherPlayerCardAdd={handleOtherPlayerCardAdd}
+                    onOtherPlayerCardRemove={handleOtherPlayerCardRemove}
+                    onOtherPlayerClear={handleOtherPlayerClear}
                   />
                 </div>
               </motion.div>

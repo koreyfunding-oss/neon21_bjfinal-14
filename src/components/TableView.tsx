@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Users, Crown, ChevronDown, Sparkles } from 'lucide-react';
-import { PlayingCard } from './PlayingCard';
+import { User, Users, Crown, ChevronDown, Sparkles, Plus, X, Trash2 } from 'lucide-react';
+import { PlayingCard, CardSelector } from './PlayingCard';
 import { 
   DeckState, 
   getCardPredictions,
@@ -25,7 +25,10 @@ interface TableViewProps {
   playerPosition: number;
   onPositionChange: (position: number) => void;
   numSeats?: number;
-  otherPlayersCards?: Map<number, string[]>;
+  otherPlayersCards: Map<number, string[]>;
+  onOtherPlayerCardAdd: (seatId: number, card: string) => void;
+  onOtherPlayerCardRemove: (seatId: number, cardIndex: number) => void;
+  onOtherPlayerClear: (seatId: number) => void;
 }
 
 export function TableView({ 
@@ -35,9 +38,13 @@ export function TableView({
   playerPosition,
   onPositionChange,
   numSeats = 7,
-  otherPlayersCards = new Map()
+  otherPlayersCards,
+  onOtherPlayerCardAdd,
+  onOtherPlayerCardRemove,
+  onOtherPlayerClear
 }: TableViewProps) {
   const [showPositionPicker, setShowPositionPicker] = useState(false);
+  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   
   const predictions = getCardPredictions(deckState);
   const trueCount = getTrueCount(deckState);
@@ -49,9 +56,24 @@ export function TableView({
       name: i + 1 === playerPosition ? 'YOU' : `P${i + 1}`,
       cards: i + 1 === playerPosition ? playerCards : (otherPlayersCards.get(i + 1) || []),
       isPlayer: i + 1 === playerPosition,
-      isActive: i + 1 === playerPosition && playerCards.length > 0
+      isActive: (i + 1 === playerPosition && playerCards.length > 0) || (otherPlayersCards.get(i + 1)?.length || 0) > 0
     }));
   }, [numSeats, playerPosition, playerCards, otherPlayersCards]);
+
+  const handleSeatClick = (seatId: number) => {
+    if (seatId === playerPosition) {
+      // Clicking your own seat does nothing special
+      return;
+    }
+    // Toggle seat selection for adding cards
+    setSelectedSeat(selectedSeat === seatId ? null : seatId);
+  };
+
+  const handleCardSelect = (card: string) => {
+    if (selectedSeat && selectedSeat !== playerPosition) {
+      onOtherPlayerCardAdd(selectedSeat, card);
+    }
+  };
 
   // Position names for display
   const positionNames = ['First Base', 'Seat 2', 'Seat 3', 'Center', 'Seat 5', 'Seat 6', 'Third Base'];
@@ -96,6 +118,7 @@ export function TableView({
               // Calculate position along arc
               const angle = ((index - (numSeats - 1) / 2) / (numSeats - 1)) * 60;
               const yOffset = Math.abs(angle) * 0.8;
+              const isSelected = selectedSeat === seat.id;
               
               return (
                 <motion.div
@@ -104,23 +127,39 @@ export function TableView({
                   animate={{ opacity: 1, y: yOffset }}
                   transition={{ delay: index * 0.05 }}
                   className={cn(
-                    'flex flex-col items-center p-2 rounded-lg transition-all cursor-pointer',
+                    'flex flex-col items-center p-2 rounded-lg transition-all cursor-pointer relative',
                     seat.isPlayer 
                       ? 'bg-primary/20 border-2 border-primary shadow-[0_0_15px_hsl(var(--primary)/0.3)]' 
-                      : 'bg-secondary/30 border border-border/50 hover:bg-secondary/50'
+                      : isSelected
+                        ? 'bg-accent/30 border-2 border-accent shadow-[0_0_15px_hsl(var(--accent)/0.3)]'
+                        : 'bg-secondary/30 border border-border/50 hover:bg-secondary/50 hover:border-accent/50'
                   )}
-                  onClick={() => onPositionChange(seat.id)}
+                  onClick={() => handleSeatClick(seat.id)}
                 >
+                  {/* Clear button for other players with cards */}
+                  {!seat.isPlayer && seat.cards.length > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onOtherPlayerClear(seat.id); }}
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:scale-110 transition-transform"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                  
                   {/* Seat indicator */}
                   <div className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center mb-1',
-                    seat.isPlayer ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    'w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors',
+                    seat.isPlayer 
+                      ? 'bg-primary text-primary-foreground' 
+                      : isSelected
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-muted text-muted-foreground'
                   )}>
-                    {seat.isPlayer ? <User className="w-4 h-4" /> : <span className="text-xs">{seat.id}</span>}
+                    {seat.isPlayer ? <User className="w-4 h-4" /> : isSelected ? <Plus className="w-4 h-4" /> : <span className="text-xs">{seat.id}</span>}
                   </div>
                   
                   {/* Cards area */}
-                  <div className="flex gap-0.5 min-h-[50px] items-center">
+                  <div className="flex gap-0.5 min-h-[50px] items-center flex-wrap justify-center max-w-[60px]">
                     {seat.cards.length > 0 ? (
                       seat.cards.map((card, i) => (
                         <motion.div
@@ -128,19 +167,31 @@ export function TableView({
                           initial={{ scale: 0, rotateY: 180 }}
                           animate={{ scale: 1, rotateY: 0 }}
                           transition={{ delay: i * 0.1 }}
+                          onClick={(e) => {
+                            if (!seat.isPlayer) {
+                              e.stopPropagation();
+                              onOtherPlayerCardRemove(seat.id, i);
+                            }
+                          }}
+                          className={cn(!seat.isPlayer && 'hover:opacity-70')}
                         >
                           <PlayingCard value={card} size="xs" />
                         </motion.div>
                       ))
                     ) : (
-                      <div className="w-7 h-10 rounded border border-dashed border-muted-foreground/30" />
+                      <div className={cn(
+                        'w-7 h-10 rounded border border-dashed flex items-center justify-center',
+                        isSelected ? 'border-accent/50' : 'border-muted-foreground/30'
+                      )}>
+                        {isSelected && <Plus className="w-3 h-3 text-accent" />}
+                      </div>
                     )}
                   </div>
                   
                   {/* Label */}
                   <span className={cn(
                     'text-[10px] uppercase tracking-wider mt-1',
-                    seat.isPlayer ? 'text-primary font-bold' : 'text-muted-foreground'
+                    seat.isPlayer ? 'text-primary font-bold' : isSelected ? 'text-accent font-bold' : 'text-muted-foreground'
                   )}>
                     {seat.name}
                   </span>
@@ -149,6 +200,33 @@ export function TableView({
             })}
           </div>
         </div>
+        
+        {/* Card selector for selected seat */}
+        <AnimatePresence>
+          {selectedSeat && selectedSeat !== playerPosition && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mt-4"
+            >
+              <div className="p-3 rounded-lg bg-accent/10 border border-accent/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-display text-accent uppercase tracking-wider">
+                    Add cards to {positionNames[selectedSeat - 1] || `Seat ${selectedSeat}`}
+                  </span>
+                  <button
+                    onClick={() => setSelectedSeat(null)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <CardSelector onSelect={handleCardSelect} selectedCards={[]} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Your Position Picker */}
         <div className="flex items-center justify-center mt-4">
