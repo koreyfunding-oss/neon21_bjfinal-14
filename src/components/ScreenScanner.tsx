@@ -23,6 +23,7 @@ interface ScreenScannerProps {
   isActive: boolean;
   onToggle: () => void;
   isPremium?: boolean;
+  isElite?: boolean;
   turboMode?: boolean;
   onTurboToggle?: () => void;
 }
@@ -34,6 +35,7 @@ export function ScreenScanner({
   isActive, 
   onToggle,
   isPremium = false,
+  isElite = false,
   turboMode = false,
   onTurboToggle
 }: ScreenScannerProps) {
@@ -42,19 +44,29 @@ export function ScreenScanner({
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastOutcomeRef = useRef<string | null>(null);
+  const isCapturingRef = useRef(false);
+  const videoReadyRef = useRef(false);
   
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [scanCount, setScanCount] = useState(0);
   const [detectedSideBets, setDetectedSideBets] = useState<string[]>([]);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // Scan interval: 500ms for turbo, 1500ms for normal
   const scanInterval = turboMode ? 500 : 1500;
 
   const startScreenCapture = useCallback(async () => {
+    // Prevent multiple capture attempts
+    if (isCapturingRef.current) return;
+    isCapturingRef.current = true;
+    
     try {
       setError(null);
+      setIsVideoReady(false);
+      videoReadyRef.current = false;
+      
       // Use getDisplayMedia for screen capture
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
@@ -65,13 +77,25 @@ export function ScreenScanner({
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
+        // Wait for video to be ready before starting scan interval
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().then(() => {
+            videoReadyRef.current = true;
+            setIsVideoReady(true);
+          });
+        };
+        
         // Handle when user stops sharing via browser UI
         stream.getVideoTracks()[0].onended = () => {
+          isCapturingRef.current = false;
+          videoReadyRef.current = false;
+          setIsVideoReady(false);
           onToggle();
         };
       }
     } catch (err) {
       console.error('Screen capture error:', err);
+      isCapturingRef.current = false;
       if ((err as Error).name === 'NotAllowedError') {
         setError('Screen sharing was cancelled. Click to try again.');
       } else {
@@ -90,11 +114,15 @@ export function ScreenScanner({
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    isCapturingRef.current = false;
+    videoReadyRef.current = false;
+    setIsVideoReady(false);
     lastOutcomeRef.current = null;
   }, []);
 
   const captureAndScan = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isScanning) return;
+    // Only scan if video is ready and not already scanning
+    if (!videoRef.current || !canvasRef.current || isScanning || !videoReadyRef.current) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -184,13 +212,20 @@ export function ScreenScanner({
     return () => stopScreenCapture();
   }, [isActive, startScreenCapture, stopScreenCapture]);
 
-  // Set up scanning interval separately to respond to scanInterval changes
+  // Set up scanning interval - only start when video is ready
   useEffect(() => {
-    if (isActive && streamRef.current) {
+    if (isActive && isVideoReady && streamRef.current) {
+      // Clear any existing interval first
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
+      
+      // Start the scanning interval
       intervalRef.current = setInterval(captureAndScan, scanInterval);
+      
+      // Do an initial scan immediately
+      captureAndScan();
     }
     
     return () => {
@@ -199,7 +234,7 @@ export function ScreenScanner({
         intervalRef.current = null;
       }
     };
-  }, [isActive, captureAndScan, scanInterval]);
+  }, [isActive, isVideoReady, captureAndScan, scanInterval]);
 
   const getActiveSideBets = (sideBets: SideBets | undefined) => {
     if (!sideBets) return [];
@@ -258,7 +293,12 @@ export function ScreenScanner({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {turboMode && isActive && (
+          {isElite && isActive && (
+            <span className="text-[10px] text-purple-400 uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-purple-500/20 border border-purple-500/30">
+              ELITE AUTO-SCAN
+            </span>
+          )}
+          {turboMode && isActive && !isElite && (
             <span className="text-[10px] text-yellow-400 uppercase tracking-wider animate-pulse">
               ⚡ 500ms
             </span>
