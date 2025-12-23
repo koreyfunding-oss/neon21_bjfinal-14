@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Crown, Zap, Flame, Star, Check, ExternalLink, ArrowRight } from 'lucide-react';
+import { Zap, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import syndicateLogo from '@/assets/syndicate-supremacy-logo.png';
@@ -7,94 +7,25 @@ import neon21Logo from '@/assets/neon21-logo.png';
 import { useNavigate } from 'react-router-dom';
 
 const WHOP_CHECKOUT_BASE = 'https://whop.com/checkout';
+const PRODUCT_ID = 'prod_74ZbiZNaL4cai'; // Update this with your actual Whop product ID for $19.82/week
 
-const tiers = [
-  {
-    name: 'BASIC',
-    price: 39,
-    period: '/month',
-    productId: 'prod_74ZbiZNaL4cai',
-    icon: Zap,
-    color: 'from-cyan-500/20 to-cyan-600/10',
-    borderColor: 'border-cyan-500/30',
-    glowColor: 'shadow-[0_0_30px_rgba(6,182,212,0.3)]',
-    features: [
-      'Unlimited CIS Analysis Runs',
-      '5 Side-Bet Predictions/Day',
-      'Basic Strategy Engine',
-      'Session Tracking',
-      'Email Support',
-    ],
-    cta: 'Start Winning',
-  },
-  {
-    name: 'ELITE',
-    price: 89,
-    period: '/month',
-    productId: 'prod_Q2f69D9yoibIF',
-    icon: Flame,
-    color: 'from-primary/30 to-primary/10',
-    borderColor: 'border-primary/50',
-    glowColor: 'shadow-[0_0_40px_rgba(45,212,191,0.4)]',
-    popular: true,
-    features: [
-      'Everything in Basic',
-      'Unlimited Side-Bet Predictions',
-      'Dealer Pattern Analysis',
-      'Hit Probability Matrix',
-      'Insurance Recommendations',
-      'Camera Card Scanner',
-      'Priority Support',
-    ],
-    cta: 'Go Elite',
-  },
-  {
-    name: 'BLACKOUT',
-    price: 149,
-    period: '/month',
-    productId: 'prod_j7VCmjRcU8V38',
-    icon: Crown,
-    color: 'from-purple-500/30 to-purple-600/10',
-    borderColor: 'border-purple-500/50',
-    glowColor: 'shadow-[0_0_40px_rgba(168,85,247,0.4)]',
-    features: [
-      'Everything in Elite',
-      'Turbo Mode (3x Speed)',
-      'Advanced Forecasting',
-      'High-Frequency CIS',
-      'Exclusive Themes',
-      'VIP Discord Access',
-      '24/7 Priority Support',
-    ],
-    cta: 'Unlock Blackout',
-  },
-  {
-    name: 'LIFETIME',
-    price: 499,
-    period: 'one-time',
-    productId: 'prod_r4dkfZZZT0UFf',
-    icon: Star,
-    color: 'from-amber-500/30 to-amber-600/10',
-    borderColor: 'border-amber-500/50',
-    glowColor: 'shadow-[0_0_50px_rgba(245,158,11,0.5)]',
-    features: [
-      'All Blackout Features',
-      'Permanent Full Access',
-      'Never Pay Again',
-      'VIP Theme Collection',
-      'Founding Member Badge',
-      'Direct Developer Access',
-      'Future Updates Included',
-    ],
-    cta: 'Own It Forever',
-  },
+const features = [
+  'Manual Card Input System',
+  'Real-Time CIS Analysis',
+  'Dealer Card Tracking',
+  'Basic Strategy Engine',
+  'Side-Bet Predictions',
+  'Session Stats & Tracking',
+  'Hit Probability Matrix',
+  'Insurance Analysis',
+  'All Premium Features Included',
 ];
 
 export default function Pricing() {
   const navigate = useNavigate();
 
-  const handleCheckout = (productId: string) => {
-    window.open(`${WHOP_CHECKOUT_BASE}/${productId}`, '_blank');
+  const handleCheckout = () => {
+    window.open(`${WHOP_CHECKOUT_BASE}/${PRODUCT_ID}`, '_blank');
   };
 
   return (
@@ -121,7 +52,7 @@ export default function Pricing() {
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12 md:mb-20"
+          className="text-center mb-12 md:mb-16"
         >
           {/* Brand logos */}
           <div className="flex items-center justify-center gap-4 mb-8">
@@ -221,73 +152,72 @@ export default function Pricing() {
           </motion.div>
         </motion.div>
 
-        {/* Pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          {tiers.map((tier, index) => (
-            <motion.div
-              key={tier.name}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + index * 0.1, duration: 0.5 }}
-              className="relative"
-            >
-              {tier.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                  <div className="px-4 py-1 bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider rounded-full shadow-lg shadow-primary/30">
-                    Most Popular
-                  </div>
+        {/* Single Pricing Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="max-w-lg mx-auto mb-16"
+        >
+          <Card className="relative bg-gradient-to-b from-primary/30 to-primary/10 border-primary/50 border-2 backdrop-blur-sm overflow-hidden shadow-[0_0_50px_rgba(45,212,191,0.4)]">
+            {/* Popular badge */}
+            <div className="absolute -top-0 left-1/2 -translate-x-1/2 z-20">
+              <div className="px-6 py-2 bg-primary text-primary-foreground text-sm font-bold uppercase tracking-wider rounded-b-xl shadow-lg shadow-primary/30">
+                Full Access
+              </div>
+            </div>
+            
+            <div className="relative p-8 pt-12">
+              {/* Tier icon and name */}
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <div className="p-3 rounded-xl bg-background/50 border-primary/50 border">
+                  <Zap className="w-8 h-8 text-primary" />
                 </div>
-              )}
-              
-              <Card className={`relative h-full bg-gradient-to-b ${tier.color} ${tier.borderColor} border-2 backdrop-blur-sm overflow-hidden group hover:scale-[1.02] transition-transform duration-300 ${tier.popular ? tier.glowColor : ''}`}>
-                {/* Hover glow effect */}
-                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${tier.glowColor}`} />
-                
-                <div className="relative p-6">
-                  {/* Tier icon and name */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`p-2 rounded-lg bg-background/50 ${tier.borderColor} border`}>
-                      <tier.icon className="w-5 h-5 text-primary" />
+                <h3 className="font-display font-bold text-2xl tracking-wider">NEON21 PRO</h3>
+              </div>
+
+              {/* Price */}
+              <div className="text-center mb-8">
+                <span className="text-6xl md:text-7xl font-display font-black text-foreground">$19.82</span>
+                <span className="text-muted-foreground text-lg ml-2">/week</span>
+                <p className="text-muted-foreground text-sm mt-2">Cancel anytime</p>
+              </div>
+
+              {/* Features */}
+              <ul className="space-y-4 mb-8">
+                {features.map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-primary" />
                     </div>
-                    <h3 className="font-display font-bold text-lg tracking-wider">{tier.name}</h3>
-                  </div>
+                    <span className="text-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
-                  {/* Price */}
-                  <div className="mb-6">
-                    <span className="text-4xl md:text-5xl font-display font-black text-foreground">${tier.price}</span>
-                    <span className="text-muted-foreground text-sm ml-1">{tier.period}</span>
-                  </div>
+              {/* CTA Button */}
+              <Button
+                onClick={handleCheckout}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-lg"
+                size="lg"
+              >
+                <span>Get Started Now</span>
+                <ExternalLink className="w-5 h-5 ml-2" />
+              </Button>
 
-                  {/* Features */}
-                  <ul className="space-y-3 mb-6">
-                    {tier.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* CTA Button */}
-                  <Button
-                    onClick={() => handleCheckout(tier.productId)}
-                    className={`w-full group/btn ${tier.popular ? 'bg-primary hover:bg-primary/90' : 'bg-background/50 hover:bg-background/80 border border-border'}`}
-                    size="lg"
-                  >
-                    <span>{tier.cta}</span>
-                    <ExternalLink className="w-4 h-4 ml-2 group-hover/btn:translate-x-0.5 transition-transform" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+              {/* Money back guarantee */}
+              <p className="text-center text-muted-foreground text-sm mt-4">
+                🔒 Secure checkout powered by Whop
+              </p>
+            </div>
+          </Card>
+        </motion.div>
 
         {/* Bottom CTA */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 0.5 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
           className="text-center"
         >
           <p className="text-muted-foreground mb-4">
