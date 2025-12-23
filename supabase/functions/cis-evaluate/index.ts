@@ -95,7 +95,7 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile and check usage limits
+    // Get user profile and check access
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("*")
@@ -109,15 +109,39 @@ serve(async (req) => {
       });
     }
 
-    // Check daily limits
-    const limits = getUsageLimits(profile.tier);
-    if (limits.daily_cis !== -1 && profile.daily_cis_used >= limits.daily_cis) {
+    // Check access: 24-hour trial OR active subscription
+    const now = new Date();
+    const trialStarted = profile.trial_started_at ? new Date(profile.trial_started_at) : null;
+    const subscriptionExpires = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
+    
+    // Trial: 24 hours from account creation
+    const trialEndTime = trialStarted ? new Date(trialStarted.getTime() + 24 * 60 * 60 * 1000) : null;
+    const isTrialActive = trialEndTime && now < trialEndTime;
+    
+    // Subscription: check if not expired
+    const isSubscriptionActive = subscriptionExpires && now < subscriptionExpires;
+    
+    // Calculate time remaining for response
+    let accessType: "trial" | "subscription" | "expired" = "expired";
+    let timeRemaining: number | null = null;
+    
+    if (isSubscriptionActive) {
+      accessType = "subscription";
+      timeRemaining = Math.floor((subscriptionExpires!.getTime() - now.getTime()) / 1000);
+    } else if (isTrialActive) {
+      accessType = "trial";
+      timeRemaining = Math.floor((trialEndTime!.getTime() - now.getTime()) / 1000);
+    }
+    
+    // If neither trial nor subscription is active, require payment
+    if (!isTrialActive && !isSubscriptionActive) {
       return new Response(JSON.stringify({ 
-        error: "Daily CIS limit reached",
-        upgrade_required: true,
-        current_tier: profile.tier 
+        error: "Access expired",
+        message: "Your free trial has ended. Subscribe to continue using Neon21.",
+        trial_ended: true,
+        subscription_required: true,
       }), {
-        status: 429,
+        status: 402, // Payment Required
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -135,8 +159,8 @@ serve(async (req) => {
     
     const { player_cards, dealer_card, aggression_mode, true_count = 0, cards_seen = 0 } = body;
 
-    // CIS Engine Logic (Server-side only)
-    const result = calculateCIS(player_cards, dealer_card, aggression_mode, true_count, cards_seen, profile.tier);
+    // CIS Engine Logic (Server-side only) - all paid features enabled
+    const result = calculateCIS(player_cards, dealer_card, aggression_mode, true_count, cards_seen);
 
     // Update usage via secure RPC function (enforces authorization)
     const { error: usageError } = await supabaseClient.rpc("increment_cis_usage", {
@@ -158,7 +182,14 @@ serve(async (req) => {
       aggression_mode,
     });
 
-    return new Response(JSON.stringify(result), {
+    // Include access info in response
+    return new Response(JSON.stringify({
+      ...result,
+      access: {
+        type: accessType,
+        time_remaining_seconds: timeRemaining,
+      }
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -170,27 +201,15 @@ serve(async (req) => {
   }
 });
 
-function getUsageLimits(tier: string) {
-  switch (tier) {
-    case "lifetime":
-    case "blackout":
-      return { daily_cis: -1, daily_sidebet: -1 };
-    case "elite":
-      return { daily_cis: -1, daily_sidebet: -1 };
-    case "basic":
-      return { daily_cis: -1, daily_sidebet: 5 };
-    default:
-      return { daily_cis: 5, daily_sidebet: 1 };
-  }
-}
+// No longer needed - single tier system
+// function getUsageLimits is deprecated
 
 function calculateCIS(
   playerCards: string[],
   dealerCard: string,
   aggressionMode: string,
   trueCount: number,
-  cardsSeen: number,
-  tier: string
+  cardsSeen: number
 ) {
   const playerValue = calculateHandValue(playerCards);
   const dealerValue = getCardValue(dealerCard);
@@ -203,14 +222,12 @@ function calculateCIS(
   let cisOverride = false;
   let cisReason = "";
 
-  // Apply CIS deviations based on true count (only for paid tiers)
-  if (tier !== "free") {
-    const deviation = getCISDeviation(playerValue, dealerValue, trueCount, isSoft, isPair);
-    if (deviation) {
-      action = deviation.action;
-      cisOverride = true;
-      cisReason = deviation.reason;
-    }
+  // Apply CIS deviations based on true count (all users get full features)
+  const deviation = getCISDeviation(playerValue, dealerValue, trueCount, isSoft, isPair);
+  if (deviation) {
+    action = deviation.action;
+    cisOverride = true;
+    cisReason = deviation.reason;
   }
 
   // Aggression adjustments

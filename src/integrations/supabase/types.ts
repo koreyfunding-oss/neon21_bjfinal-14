@@ -101,8 +101,10 @@ export type Database = {
           id: string
           last_reset_date: string | null
           rank: string | null
+          subscription_expires_at: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
           total_cis_runs: number
+          trial_started_at: string | null
           updated_at: string
           user_id: string
           xp: number
@@ -114,8 +116,10 @@ export type Database = {
           id?: string
           last_reset_date?: string | null
           rank?: string | null
+          subscription_expires_at?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
           total_cis_runs?: number
+          trial_started_at?: string | null
           updated_at?: string
           user_id: string
           xp?: number
@@ -127,8 +131,10 @@ export type Database = {
           id?: string
           last_reset_date?: string | null
           rank?: string | null
+          subscription_expires_at?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
           total_cis_runs?: number
+          trial_started_at?: string | null
           updated_at?: string
           user_id?: string
           xp?: number
@@ -217,6 +223,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_subscription: {
+        Args: { days_valid?: number; profile_user_id: string }
+        Returns: undefined
+      }
       increment_cis_usage: {
         Args: { profile_user_id: string }
         Returns: undefined
