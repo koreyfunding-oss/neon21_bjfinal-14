@@ -508,7 +508,10 @@ export default function Index() {
                   <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-green-500/10 border border-green-500/30">
                     <Shield className="w-3 h-3 text-green-400" /><span className="text-[9px] text-green-400 font-mono">{securityBadge}</span>
                   </div>
-                  {profile?.tier === 'free' && <TrialCountdown createdAt={profile.created_at} />}
+                  <TrialCountdown 
+                    trialStartedAt={profile?.trial_started_at ?? null} 
+                    subscriptionExpiresAt={profile?.subscription_expires_at ?? null} 
+                  />
                 </div>
               </div>
             </motion.div>

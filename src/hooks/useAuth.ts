@@ -14,6 +14,8 @@ export interface UserProfile {
   last_reset_date: string;
   created_at: string;
   updated_at: string;
+  trial_started_at: string | null;
+  subscription_expires_at: string | null;
 }
 
 export const useAuth = () => {
