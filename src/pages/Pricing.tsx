@@ -7,7 +7,7 @@ import neon21Logo from '@/assets/neon21-logo.png';
 import { useNavigate } from 'react-router-dom';
 
 const WHOP_CHECKOUT_BASE = 'https://whop.com/checkout';
-const PRODUCT_ID = 'prod_74ZbiZNaL4cai'; // Update this with your actual Whop product ID for $19.82/week
+const PRODUCT_ID = 'basic-96-40ef';
 
 const features = [
   'Manual Card Input System',
