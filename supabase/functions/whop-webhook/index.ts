@@ -6,22 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, whop-signature",
 };
 
-// Map Whop product IDs to tiers
-const TIER_MAP: Record<string, string> = {
-  "prod_74ZbiZNaL4cai": "basic",
-  "prod_Q2f69D9yoibIF": "elite", 
-  "prod_j7VCmjRcU8V38": "blackout",
-  "prod_r4dkfZZZT0UFf": "lifetime",
-};
-
-// Tier priority for determining highest tier
-const TIER_PRIORITY: Record<string, number> = {
-  "free": 0,
-  "basic": 1,
-  "elite": 2,
-  "blackout": 3,
-  "lifetime": 4,
-};
+// Single product - $19.82/week
+const VALID_PRODUCT_ID = "basic-96-40ef";
+const SUBSCRIPTION_DAYS = 7;
 
 // Verify Whop webhook signature using HMAC-SHA256
 async function verifyWebhookSignature(
@@ -119,7 +106,6 @@ serve(async (req) => {
     const membershipStatus = data.status;
     const isValid = data.valid;
     const whopMembershipId = data.id;
-    const licenseKey = data.license_key;
 
     console.log("Processing event:", eventType, "product:", productId);
 
@@ -142,7 +128,7 @@ serve(async (req) => {
               const fetchedEmail = membershipData.email;
               
               if (fetchedEmail) {
-                await processUserTierUpdate(supabaseClient, fetchedEmail, productId, eventType, isValid, membershipStatus, whopMembershipId);
+                await processSubscription(supabaseClient, fetchedEmail, productId, eventType, isValid, membershipStatus, whopMembershipId);
               }
             }
           } catch (err) {
@@ -150,7 +136,7 @@ serve(async (req) => {
           }
         }
       } else {
-        await processUserTierUpdate(supabaseClient, userEmail, productId, eventType, isValid, membershipStatus, whopMembershipId);
+        await processSubscription(supabaseClient, userEmail, productId, eventType, isValid, membershipStatus, whopMembershipId);
       }
     }
 
@@ -167,7 +153,7 @@ serve(async (req) => {
   }
 });
 
-async function processUserTierUpdate(
+async function processSubscription(
   supabaseClient: any,
   email: string,
   productId: string | undefined,
@@ -176,7 +162,7 @@ async function processUserTierUpdate(
   status: string | undefined,
   whopMembershipId: string | undefined
 ) {
-  console.log(`Processing tier update, event: ${eventType}`);
+  console.log(`Processing subscription, event: ${eventType}, product: ${productId}`);
 
   // Find user by email in auth.users
   const { data: authUsers, error: authError } = await supabaseClient.auth.admin.listUsers();
@@ -193,38 +179,12 @@ async function processUserTierUpdate(
     return;
   }
 
-  console.log("User found for tier update");
-
-  // Determine the new tier based on event type
-  let newTier = "free";
-  
-  // Activation events - user purchased or subscription became valid
-  if (eventType === "membership.went_valid" || eventType === "membership.created" || eventType === "membership.activated") {
-    if (productId && TIER_MAP[productId]) {
-      newTier = TIER_MAP[productId];
-    }
-  } 
-  // Deactivation events - user cancelled or subscription expired
-  else if (eventType === "membership.went_invalid" || eventType === "membership.deactivated" || eventType === "membership.cancelled") {
-    newTier = "free";
-  } 
-  // Update events - check current status
-  else if (eventType === "membership.updated") {
-    if (isValid && (status === "active" || status === "trialing")) {
-      if (productId && TIER_MAP[productId]) {
-        newTier = TIER_MAP[productId];
-      }
-    } else {
-      newTier = "free";
-    }
-  }
-
-  console.log(`Determined new tier: ${newTier}`);
+  console.log("User found for subscription update");
 
   // Get current profile
   const { data: profile, error: profileError } = await supabaseClient
     .from("profiles")
-    .select("id, tier")
+    .select("id, tier, subscription_expires_at")
     .eq("user_id", user.id)
     .single();
 
@@ -233,44 +193,62 @@ async function processUserTierUpdate(
     return;
   }
 
-  // Only update if new tier is different (and handle upgrades/downgrades properly)
-  const currentTierPriority = TIER_PRIORITY[profile.tier] || 0;
-  const newTierPriority = TIER_PRIORITY[newTier] || 0;
+  // Activation events - user purchased subscription
+  if (eventType === "membership.went_valid" || eventType === "membership.created" || eventType === "membership.activated") {
+    // Activate 7-day subscription
+    const { error: activateError } = await supabaseClient.rpc("activate_subscription", {
+      profile_user_id: user.id,
+      days_valid: SUBSCRIPTION_DAYS,
+    });
 
-  // For deactivation events, always downgrade
-  // For activation events, only upgrade if new tier is higher
-  const shouldUpdate = 
-    (eventType.includes("invalid") || eventType.includes("deactivated") || eventType.includes("cancelled")) ||
-    (newTierPriority > currentTierPriority) ||
-    (eventType === "membership.went_valid" || eventType === "membership.created");
-
-  if (shouldUpdate && newTier !== profile.tier) {
-    // Use the security definer function to update tier
+    if (activateError) {
+      console.error("Error activating subscription:", activateError);
+    } else {
+      console.log(`Subscription activated for ${SUBSCRIPTION_DAYS} days`);
+    }
+  } 
+  // Deactivation events - subscription expired or cancelled
+  else if (eventType === "membership.went_invalid" || eventType === "membership.deactivated" || eventType === "membership.cancelled") {
+    // Set tier back to free and clear subscription
     const { error: updateError } = await supabaseClient.rpc("update_user_tier", {
       profile_user_id: user.id,
-      new_tier: newTier,
+      new_tier: "free",
     });
 
     if (updateError) {
-      console.error("Error updating tier:", updateError);
+      console.error("Error updating tier to free:", updateError);
     } else {
-      console.log(`Tier updated to ${newTier}`);
+      console.log("Subscription deactivated, tier set to free");
     }
+  } 
+  // Renewal events
+  else if (eventType === "membership.updated" || eventType === "membership.renewed") {
+    if (isValid && (status === "active" || status === "trialing")) {
+      // Extend subscription by 7 days
+      const { error: activateError } = await supabaseClient.rpc("activate_subscription", {
+        profile_user_id: user.id,
+        days_valid: SUBSCRIPTION_DAYS,
+      });
 
-    // Update profile_secrets with whop membership info
-    if (whopMembershipId) {
-      const { error: secretsError } = await supabaseClient
-        .from("profile_secrets")
-        .upsert({
-          profile_id: profile.id,
-          whop_id: whopMembershipId,
-        }, { onConflict: "profile_id" });
-
-      if (secretsError) {
-        console.error("Error updating profile_secrets:", secretsError);
+      if (activateError) {
+        console.error("Error extending subscription:", activateError);
+      } else {
+        console.log(`Subscription extended for ${SUBSCRIPTION_DAYS} days`);
       }
     }
-  } else {
-    console.log(`No tier update needed. Current: ${profile.tier}, New: ${newTier}`);
+  }
+
+  // Update profile_secrets with whop membership info
+  if (whopMembershipId) {
+    const { error: secretsError } = await supabaseClient
+      .from("profile_secrets")
+      .upsert({
+        profile_id: profile.id,
+        whop_id: whopMembershipId,
+      }, { onConflict: "profile_id" });
+
+    if (secretsError) {
+      console.error("Error updating profile_secrets:", secretsError);
+    }
   }
 }
