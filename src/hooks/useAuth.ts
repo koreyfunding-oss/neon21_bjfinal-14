@@ -73,6 +73,20 @@ export const useAuth = () => {
     }
   };
 
+  const TRIAL_HOURS = 1;
+
+  const isTrialExpired = (() => {
+    if (!profile?.trial_started_at) return false;
+    const trialEnd = new Date(profile.trial_started_at);
+    trialEnd.setHours(trialEnd.getHours() + TRIAL_HOURS);
+    return new Date() >= trialEnd;
+  })();
+
+  const hasActiveSubscription = (() => {
+    if (!profile?.subscription_expires_at) return false;
+    return new Date(profile.subscription_expires_at) > new Date();
+  })();
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -104,6 +118,8 @@ export const useAuth = () => {
     session,
     profile,
     loading,
+    isTrialExpired,
+    hasActiveSubscription,
     signOut,
     getUsageLimits,
     canUseCIS,

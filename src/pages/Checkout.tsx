@@ -1,11 +1,10 @@
 import { motion } from 'framer-motion';
 import syndicateLogo from '@/assets/syndicate-supremacy-logo.png';
 import neon21Logo from '@/assets/neon21-logo.png';
+import { useNavigate } from 'react-router-dom';
 
 const Checkout = () => {
-  const handleCheckout = () => {
-    window.open('https://whop.com/syndicate-supremacy/', '_blank');
-  };
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col items-center justify-center p-6">
@@ -82,7 +81,7 @@ const Checkout = () => {
 
         {/* CTA Button */}
         <motion.button
-          onClick={handleCheckout}
+          onClick={() => navigate('/pricing')}
           className="group relative px-12 py-5 bg-gradient-to-r from-primary to-cyan-400 rounded-lg font-display font-bold text-xl tracking-wider text-background overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_hsl(var(--primary)/0.6)] hover:scale-105"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
