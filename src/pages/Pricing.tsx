@@ -271,7 +271,7 @@ export default function Pricing() {
                   <span className="text-4xl font-display font-black text-foreground">$59.82</span>
                   <span className="text-muted-foreground text-sm ml-1">/month</span>
                 </div>
-                <p className="text-purple-400 text-xs mb-4">Save ~25% vs weekly</p>
+                <p className="text-purple-400 text-xs mb-4">Save over 20% vs. weekly</p>
                 <ul className="space-y-2 mb-6 flex-1">
                   {features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
