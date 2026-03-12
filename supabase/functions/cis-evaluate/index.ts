@@ -109,13 +109,13 @@ serve(async (req) => {
       });
     }
 
-    // Check access: 24-hour trial OR active subscription
+    // Check access: 1-hour trial OR active subscription
     const now = new Date();
     const trialStarted = profile.trial_started_at ? new Date(profile.trial_started_at) : null;
     const subscriptionExpires = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
     
-    // Trial: 24 hours from account creation
-    const trialEndTime = trialStarted ? new Date(trialStarted.getTime() + 24 * 60 * 60 * 1000) : null;
+    // Trial: 1 hour from account creation
+    const trialEndTime = trialStarted ? new Date(trialStarted.getTime() + 1 * 60 * 60 * 1000) : null;
     const isTrialActive = trialEndTime && now < trialEndTime;
     
     // Subscription: check if not expired

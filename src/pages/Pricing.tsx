@@ -1,13 +1,13 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Check, ExternalLink } from 'lucide-react';
+import { Zap, Check, ExternalLink, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import syndicateLogo from '@/assets/syndicate-supremacy-logo.png';
 import neon21Logo from '@/assets/neon21-logo.png';
 import { useNavigate } from 'react-router-dom';
-
-const WHOP_CHECKOUT_BASE = 'https://whop.com/checkout';
-const PRODUCT_ID = 'basic-96-40ef';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const features = [
   'Manual Card Input System',
@@ -23,9 +23,28 @@ const features = [
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState<'weekly' | 'monthly' | null>(null);
 
-  const handleCheckout = () => {
-    window.open(`${WHOP_CHECKOUT_BASE}/${PRODUCT_ID}`, '_blank');
+  const handleCheckout = async (plan: 'weekly' | 'monthly') => {
+    setLoading(plan);
+    try {
+      const { data, error } = await supabase.functions.invoke('square-checkout', {
+        body: { plan },
+      });
+
+      if (error || !data?.checkout_url) {
+        console.error('Checkout error:', error);
+        toast.error('Failed to start checkout. Please try again.');
+        return;
+      }
+
+      window.open(data.checkout_url, '_blank');
+    } catch (err) {
+      console.error('Checkout error:', err);
+      toast.error('Failed to start checkout. Please try again.');
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
@@ -152,66 +171,131 @@ export default function Pricing() {
           </motion.div>
         </motion.div>
 
-        {/* Single Pricing Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="max-w-lg mx-auto mb-16"
-        >
-          <Card className="relative bg-gradient-to-b from-primary/30 to-primary/10 border-primary/50 border-2 backdrop-blur-sm overflow-hidden shadow-[0_0_50px_rgba(45,212,191,0.4)]">
-            {/* Popular badge */}
-            <div className="absolute -top-0 left-1/2 -translate-x-1/2 z-20">
-              <div className="px-6 py-2 bg-primary text-primary-foreground text-sm font-bold uppercase tracking-wider rounded-b-xl shadow-lg shadow-primary/30">
-                Full Access
-              </div>
-            </div>
-            
-            <div className="relative p-8 pt-12">
-              {/* Tier icon and name */}
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="p-3 rounded-xl bg-background/50 border-primary/50 border">
-                  <Zap className="w-8 h-8 text-primary" />
+        {/* Two Pricing Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-16">
+          {/* Weekly Plan */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          >
+            <Card className="relative bg-gradient-to-b from-primary/20 to-primary/5 border-primary/40 border backdrop-blur-sm overflow-hidden h-full flex flex-col">
+              <div className="relative p-8 flex flex-col flex-1">
+                {/* Tier icon and name */}
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <div className="p-3 rounded-xl bg-background/50 border-primary/50 border">
+                    <Zap className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="font-display font-bold text-xl tracking-wider">WEEKLY</h3>
                 </div>
-                <h3 className="font-display font-bold text-2xl tracking-wider">NEON21 PRO</h3>
+
+                {/* Price */}
+                <div className="text-center mb-8">
+                  <span className="text-5xl md:text-6xl font-display font-black text-foreground">$9.82</span>
+                  <span className="text-muted-foreground text-lg ml-2">/week</span>
+                  <p className="text-muted-foreground text-sm mt-2">Cancel anytime</p>
+                </div>
+
+                {/* Features */}
+                <ul className="space-y-3 mb-8 flex-1">
+                  {features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary" />
+                      </div>
+                      <span className="text-foreground text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA Button */}
+                <Button
+                  onClick={() => handleCheckout('weekly')}
+                  disabled={loading !== null}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-lg"
+                  size="lg"
+                >
+                  {loading === 'weekly' ? (
+                    <span>Loading...</span>
+                  ) : (
+                    <>
+                      <span>Get Weekly Access</span>
+                      <ExternalLink className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Monthly Plan */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            <Card className="relative bg-gradient-to-b from-primary/30 to-primary/10 border-primary/50 border-2 backdrop-blur-sm overflow-hidden h-full flex flex-col shadow-[0_0_50px_rgba(45,212,191,0.4)]">
+              {/* Best Value badge */}
+              <div className="absolute -top-0 left-1/2 -translate-x-1/2 z-20">
+                <div className="px-6 py-2 bg-primary text-primary-foreground text-sm font-bold uppercase tracking-wider rounded-b-xl shadow-lg shadow-primary/30 flex items-center gap-1">
+                  <Crown className="w-3.5 h-3.5" />
+                  BEST VALUE
+                </div>
               </div>
 
-              {/* Price */}
-              <div className="text-center mb-8">
-                <span className="text-6xl md:text-7xl font-display font-black text-foreground">$19.82</span>
-                <span className="text-muted-foreground text-lg ml-2">/week</span>
-                <p className="text-muted-foreground text-sm mt-2">Cancel anytime</p>
+              <div className="relative p-8 pt-12 flex flex-col flex-1">
+                {/* Tier icon and name */}
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <div className="p-3 rounded-xl bg-background/50 border-primary/50 border">
+                    <Zap className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="font-display font-bold text-xl tracking-wider">MONTHLY</h3>
+                </div>
+
+                {/* Price */}
+                <div className="text-center mb-8">
+                  <span className="text-5xl md:text-6xl font-display font-black text-foreground">$31.16</span>
+                  <span className="text-muted-foreground text-lg ml-2">/month</span>
+                  <p className="text-primary text-sm mt-2 font-semibold">Save 21% — only $7.79/week</p>
+                </div>
+
+                {/* Features */}
+                <ul className="space-y-3 mb-8 flex-1">
+                  {features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-primary" />
+                      </div>
+                      <span className="text-foreground text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA Button */}
+                <Button
+                  onClick={() => handleCheckout('monthly')}
+                  disabled={loading !== null}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-lg"
+                  size="lg"
+                >
+                  {loading === 'monthly' ? (
+                    <span>Loading...</span>
+                  ) : (
+                    <>
+                      <span>Get Monthly Access</span>
+                      <ExternalLink className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+
+                {/* Secure checkout */}
+                <p className="text-center text-muted-foreground text-sm mt-4">
+                  🔒 Secure checkout powered by Square
+                </p>
               </div>
-
-              {/* Features */}
-              <ul className="space-y-4 mb-8">
-                {features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Check className="w-3 h-3 text-primary" />
-                    </div>
-                    <span className="text-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* CTA Button */}
-              <Button
-                onClick={handleCheckout}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-lg"
-                size="lg"
-              >
-                <span>Get Started Now</span>
-                <ExternalLink className="w-5 h-5 ml-2" />
-              </Button>
-
-              {/* Money back guarantee */}
-              <p className="text-center text-muted-foreground text-sm mt-4">
-                🔒 Secure checkout powered by Whop
-              </p>
-            </div>
-          </Card>
-        </motion.div>
+            </Card>
+          </motion.div>
+        </div>
 
         {/* Bottom CTA */}
         <motion.div
