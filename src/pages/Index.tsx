@@ -25,6 +25,7 @@ import { SubscriptionBadge } from '@/components/SubscriptionBadge';
 import { TrialCountdown } from '@/components/TrialCountdown';
 import { SubscriptionSync } from '@/components/SubscriptionSync';
 import { UsageIndicator } from '@/components/UsageIndicator';
+import { OnboardingTour } from '@/components/OnboardingTour';
 import { useAuth } from '@/hooks/useAuth';
 import { analyzeHand, calculateHandTotal, getDealerBustProbability, type HandAnalysis } from '@/lib/blackjackStrategy';
 import { 
@@ -50,6 +51,15 @@ import { toast } from 'sonner';
 const initialSession: SessionData = {
   wins: 0, losses: 0, pushes: 0, blackjacks: 0, currentStreak: 0, handsPlayed: 0,
 };
+
+const ONBOARDING_STEPS = [
+  { title: 'Welcome to Neon21', body: 'This app gives live blackjack decision support. Start by logging in and choosing your table settings.' },
+  { title: 'Add Cards Fast', body: 'Use card buttons, camera, or screen scanner to track player/dealer cards in real time.' },
+  { title: 'Read the Recommendation', body: 'The Action Recommendation panel shows HIT/STAND/DOUBLE/SPLIT guidance with confidence and risk context.' },
+  { title: 'Track Count + Heat', body: 'Card Counter and Heat Index help you adapt bet sizing and aggression to current shoe conditions.' },
+  { title: 'Use Premium Analytics', body: 'Seat analysis, insurance analysis, and hit-probability matrix unlock with paid subscription.' },
+  { title: 'Trial and Access', body: 'You get 1 hour trial access. After trial expiry, an active paid subscription is required for app access.' },
+];
 
 export default function Index() {
   const navigate = useNavigate();
@@ -84,6 +94,8 @@ export default function Index() {
   const [announcedHotSeat, setAnnouncedHotSeat] = useState<number | null>(null);
   const lastHotSeatRef = useRef<number | null>(null);
   const [showControls, setShowControls] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
 
   // Calculate current bet based on strategy
   const currentBet = useMemo(() => {
@@ -135,7 +147,32 @@ export default function Index() {
     }
   }, [isElite]);
 
+  // First-run onboarding tour (6 steps)
+  useEffect(() => {
+    if (!user || !profile) return;
+    const seen = localStorage.getItem('neon21_onboarding_seen_v1');
+    if (!seen) {
+      setTourStep(0);
+      setTourOpen(true);
+    }
+  }, [user, profile]);
+
   const usageLimits = getUsageLimits();
+
+  const closeTour = () => {
+    localStorage.setItem('neon21_onboarding_seen_v1', '1');
+    setTourOpen(false);
+  };
+
+  const nextTour = () => {
+    if (tourStep >= ONBOARDING_STEPS.length - 1) {
+      closeTour();
+      return;
+    }
+    setTourStep((s) => s + 1);
+  };
+
+  const backTour = () => setTourStep((s) => Math.max(0, s - 1));
 
   if (profile && !hasAccess) {
     return (
@@ -445,6 +482,17 @@ export default function Index() {
         isVisible={showQuickAction && turboMode && (cameraActive || screenCaptureActive)}
         confidence={analysis?.confidence}
       />
+
+      <OnboardingTour
+        open={tourOpen}
+        step={tourStep}
+        total={ONBOARDING_STEPS.length}
+        title={ONBOARDING_STEPS[tourStep]?.title || 'Welcome'}
+        body={ONBOARDING_STEPS[tourStep]?.body || ''}
+        onNext={nextTour}
+        onBack={backTour}
+        onClose={closeTour}
+      />
       
       <div className="fixed inset-0 pointer-events-none"><div className="scan-line absolute inset-0" /></div>
       {/* Compact top bar */}
@@ -479,6 +527,13 @@ export default function Index() {
           className={cn('p-1.5 rounded-full border transition-colors', showControls ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary/50 border-border text-muted-foreground')}
         >
           <Menu className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => { setTourStep(0); setTourOpen(true); }}
+          className="p-1.5 rounded-full border border-border bg-secondary/50 text-muted-foreground hover:text-foreground"
+          title="Show onboarding"
+        >
+          <Sparkles className="w-4 h-4" />
         </button>
         {user && (
           <button 
