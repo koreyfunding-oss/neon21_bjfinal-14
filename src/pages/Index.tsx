@@ -107,6 +107,13 @@ export default function Index() {
   const isPremium = profile?.tier !== 'free';
   const isElite = profile?.tier === 'elite' || profile?.tier === 'blackout' || profile?.tier === 'lifetime';
 
+  const now = Date.now();
+  const trialEndsAt = profile?.trial_started_at ? new Date(profile.trial_started_at).getTime() + (60 * 60 * 1000) : null; // 1 hour
+  const subscriptionEndsAt = profile?.subscription_expires_at ? new Date(profile.subscription_expires_at).getTime() : null;
+  const hasSubscriptionAccess = !!(subscriptionEndsAt && subscriptionEndsAt > now);
+  const hasTrialAccess = !!(trialEndsAt && trialEndsAt > now);
+  const hasAccess = !!profile && (isPremium || hasSubscriptionAccess || hasTrialAccess);
+
   useEffect(() => { initializeSecurity(); }, []);
   // Speech only enabled for premium users
   useEffect(() => { 
@@ -129,6 +136,24 @@ export default function Index() {
   }, [isElite]);
 
   const usageLimits = getUsageLimits();
+
+  if (profile && !hasAccess) {
+    return (
+      <div className="min-h-screen bg-background cyber-grid flex items-center justify-center p-6">
+        <div className="max-w-md w-full p-6 rounded-xl border border-yellow-500/30 bg-card/90 text-center space-y-3">
+          <p className="text-yellow-400 text-xs uppercase tracking-wider">Trial Ended</p>
+          <h2 className="text-xl font-display text-foreground">Your 1-hour trial has expired</h2>
+          <p className="text-sm text-muted-foreground">Subscribe to continue using Neon21 features.</p>
+          <button
+            onClick={() => navigate('/pricing')}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold"
+          >
+            View Plans
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const tableState = useMemo(() => ({
     trueCount: getTrueCount(deckState),
@@ -510,7 +535,8 @@ export default function Index() {
                   </div>
                   <TrialCountdown 
                     trialStartedAt={profile?.trial_started_at ?? null} 
-                    subscriptionExpiresAt={profile?.subscription_expires_at ?? null} 
+                    subscriptionExpiresAt={profile?.subscription_expires_at ?? null}
+                    trialHours={1}
                   />
                 </div>
               </div>
@@ -599,7 +625,7 @@ export default function Index() {
             <InsuranceAnalysis 
               deckState={deckState} 
               dealerUpcard={dealerUpcard} 
-              isPremium={profile?.tier !== 'free' || true}
+              isPremium={profile?.tier !== 'free'}
             />
 
             <AnimatePresence>{showAdvanced && (<>
@@ -673,7 +699,7 @@ export default function Index() {
                 deckState={deckState} 
                 currentTotal={total > 0 ? total : null} 
                 isSoft={soft} 
-                isPremium={profile?.tier !== 'free' || true} 
+                isPremium={profile?.tier !== 'free'} 
               />
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.14 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">

@@ -29,7 +29,7 @@ function formatTimeRemaining(seconds: number): string {
 export function TrialCountdown({ 
   trialStartedAt, 
   subscriptionExpiresAt,
-  trialHours = 24 
+  trialHours = 1 
 }: TrialCountdownProps) {
   const { type, secondsLeft, isExpired } = useMemo(() => {
     const now = new Date();
