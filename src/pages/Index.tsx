@@ -120,7 +120,8 @@ export default function Index() {
   const isElite = profile?.tier === 'elite' || profile?.tier === 'blackout' || profile?.tier === 'lifetime';
 
   const now = Date.now();
-  const trialEndsAt = profile?.trial_started_at ? new Date(profile.trial_started_at).getTime() + (60 * 60 * 1000) : null; // 1 hour
+  const trialStartSource = profile?.trial_started_at || user?.created_at || null;
+  const trialEndsAt = trialStartSource ? new Date(trialStartSource).getTime() + (60 * 60 * 1000) : null; // 1 hour
   const subscriptionEndsAt = profile?.subscription_expires_at ? new Date(profile.subscription_expires_at).getTime() : null;
   const hasSubscriptionAccess = !!(subscriptionEndsAt && subscriptionEndsAt > now);
   const hasTrialAccess = !!(trialEndsAt && trialEndsAt > now);
@@ -149,13 +150,13 @@ export default function Index() {
 
   // First-run onboarding tour (6 steps)
   useEffect(() => {
-    if (!user || !profile) return;
+    if (!user) return;
     const seen = localStorage.getItem('neon21_onboarding_seen_v1');
     if (!seen) {
       setTourStep(0);
       setTourOpen(true);
     }
-  }, [user, profile]);
+  }, [user]);
 
   const usageLimits = getUsageLimits();
 
@@ -498,6 +499,13 @@ export default function Index() {
       {/* Compact top bar */}
       <div className="fixed top-3 right-3 z-50 flex items-center gap-2">
         {profile && <SubscriptionBadge tier={profile.tier} />}
+        {user && (
+          <TrialCountdown
+            trialStartedAt={profile?.trial_started_at ?? user?.created_at ?? null}
+            subscriptionExpiresAt={profile?.subscription_expires_at ?? null}
+            trialHours={1}
+          />
+        )}
         {profile?.tier === 'free' ? (
           <motion.button 
             onClick={() => { refetchProfile(); toast.success('Membership synced'); }} 
