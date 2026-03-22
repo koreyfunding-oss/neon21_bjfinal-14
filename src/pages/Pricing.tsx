@@ -1,13 +1,13 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Check, ExternalLink } from 'lucide-react';
+import { Zap, Check, ExternalLink, Clock, Crown, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import syndicateLogo from '@/assets/syndicate-supremacy-logo.png';
 import neon21Logo from '@/assets/neon21-logo.png';
 import { useNavigate } from 'react-router-dom';
-
-const WHOP_CHECKOUT_BASE = 'https://whop.com/checkout';
-const PRODUCT_ID = 'basic-96-40ef';
+import { initiateSquareCheckout, type SquarePlan } from '@/integrations/square/client';
+import { toast } from 'sonner';
 
 const features = [
   'Manual Card Input System',
@@ -23,9 +23,24 @@ const features = [
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const [loadingPlan, setLoadingPlan] = useState<SquarePlan | null>(null);
 
-  const handleCheckout = () => {
-    window.open(`${WHOP_CHECKOUT_BASE}/${PRODUCT_ID}`, '_blank');
+  const handleCheckout = async (plan: SquarePlan) => {
+    setLoadingPlan(plan);
+    try {
+      const url = await initiateSquareCheckout(plan);
+      window.open(url, '_blank');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to start checkout';
+      if (message.includes('logged in')) {
+        toast.error('Please sign in first to subscribe');
+        navigate('/auth');
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setLoadingPlan(null);
+    }
   };
 
   return (
@@ -152,65 +167,144 @@ export default function Pricing() {
           </motion.div>
         </motion.div>
 
-        {/* Single Pricing Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="max-w-lg mx-auto mb-16"
-        >
-          <Card className="relative bg-gradient-to-b from-primary/30 to-primary/10 border-primary/50 border-2 backdrop-blur-sm overflow-hidden shadow-[0_0_50px_rgba(45,212,191,0.4)]">
-            {/* Popular badge */}
-            <div className="absolute -top-0 left-1/2 -translate-x-1/2 z-20">
-              <div className="px-6 py-2 bg-primary text-primary-foreground text-sm font-bold uppercase tracking-wider rounded-b-xl shadow-lg shadow-primary/30">
-                Full Access
-              </div>
-            </div>
-            
-            <div className="relative p-8 pt-12">
-              {/* Tier icon and name */}
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="p-3 rounded-xl bg-background/50 border-primary/50 border">
-                  <Zap className="w-8 h-8 text-primary" />
+        {/* Pricing Cards */}
+        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16">
+          {/* Trial Tier */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+          >
+            <Card className="relative bg-card/80 border-border backdrop-blur-sm overflow-hidden h-full flex flex-col">
+              <div className="p-6 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                    <Clock className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <h3 className="font-display font-bold text-lg tracking-wider text-yellow-400">TRIAL</h3>
                 </div>
-                <h3 className="font-display font-bold text-2xl tracking-wider">NEON21 PRO</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-display font-black text-foreground">Free</span>
+                  <p className="text-muted-foreground text-sm mt-1">1 hour full access on signup</p>
+                </div>
+                <ul className="space-y-2 mb-6 flex-1">
+                  {features.slice(0, 5).map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+                      <span className="text-muted-foreground">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="px-3 py-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-[11px] text-yellow-400 text-center">
+                  Automatically enabled on signup
+                </div>
               </div>
+            </Card>
+          </motion.div>
 
-              {/* Price */}
-              <div className="text-center mb-8">
-                <span className="text-6xl md:text-7xl font-display font-black text-foreground">$19.82</span>
-                <span className="text-muted-foreground text-lg ml-2">/week</span>
-                <p className="text-muted-foreground text-sm mt-2">Cancel anytime</p>
+          {/* Weekly Tier */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          >
+            <Card className="relative bg-gradient-to-b from-primary/30 to-primary/10 border-primary/50 border-2 backdrop-blur-sm overflow-hidden shadow-[0_0_50px_rgba(45,212,191,0.4)] h-full flex flex-col">
+              <div className="absolute -top-0 left-1/2 -translate-x-1/2 z-20">
+                <div className="px-4 py-1.5 bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider rounded-b-lg shadow-lg shadow-primary/30">
+                  Most Popular
+                </div>
               </div>
+              <div className="p-6 pt-10 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 rounded-lg bg-primary/10 border border-primary/30">
+                    <Zap className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="font-display font-bold text-lg tracking-wider">WEEKLY</h3>
+                </div>
+                <div className="mb-4">
+                  <span className="text-4xl font-display font-black text-foreground">$19.82</span>
+                  <span className="text-muted-foreground text-sm ml-1">/week</span>
+                  <p className="text-muted-foreground text-sm mt-1">Cancel anytime</p>
+                </div>
+                <ul className="space-y-2 mb-6 flex-1">
+                  {features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                      <span className="text-foreground">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  onClick={() => handleCheckout('weekly')}
+                  disabled={loadingPlan !== null}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-5"
+                  size="lg"
+                >
+                  {loadingPlan === 'weekly' ? 'Loading...' : (
+                    <>Subscribe Weekly <ExternalLink className="w-4 h-4 ml-2" /></>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
 
-              {/* Features */}
-              <ul className="space-y-4 mb-8">
-                {features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Check className="w-3 h-3 text-primary" />
-                    </div>
-                    <span className="text-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Monthly Tier */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            <Card className="relative bg-gradient-to-b from-purple-500/20 to-purple-500/5 border-purple-500/40 border backdrop-blur-sm overflow-hidden h-full flex flex-col">
+              <div className="absolute -top-0 left-1/2 -translate-x-1/2 z-20">
+                <div className="px-4 py-1.5 bg-purple-500 text-white text-xs font-bold uppercase tracking-wider rounded-b-lg shadow-lg shadow-purple-500/30">
+                  Best Value
+                </div>
+              </div>
+              <div className="p-6 pt-10 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                    <Calendar className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <h3 className="font-display font-bold text-lg tracking-wider text-purple-300">MONTHLY</h3>
+                </div>
+                <div className="mb-1">
+                  <span className="text-4xl font-display font-black text-foreground">$59.82</span>
+                  <span className="text-muted-foreground text-sm ml-1">/month</span>
+                </div>
+                <p className="text-purple-400 text-xs mb-4">Save over 20% vs. weekly</p>
+                <ul className="space-y-2 mb-6 flex-1">
+                  {features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <Check className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                      <span className="text-foreground">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  onClick={() => handleCheckout('monthly')}
+                  disabled={loadingPlan !== null}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-5"
+                  size="lg"
+                >
+                  {loadingPlan === 'monthly' ? 'Loading...' : (
+                    <>Subscribe Monthly <Crown className="w-4 h-4 ml-2" /></>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
 
-              {/* CTA Button */}
-              <Button
-                onClick={handleCheckout}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-lg"
-                size="lg"
-              >
-                <span>Get Started Now</span>
-                <ExternalLink className="w-5 h-5 ml-2" />
-              </Button>
-
-              {/* Money back guarantee */}
-              <p className="text-center text-muted-foreground text-sm mt-4">
-                🔒 Secure checkout powered by Whop
-              </p>
-            </div>
-          </Card>
+        {/* Secure payment note */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.5 }}
+          className="text-center mb-8"
+        >
+          <p className="text-muted-foreground text-sm">
+            🔒 Secure checkout powered by Square
+          </p>
         </motion.div>
 
         {/* Bottom CTA */}

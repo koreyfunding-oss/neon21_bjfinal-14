@@ -23,10 +23,10 @@ import { ProfitStrategy, type BettingStrategy } from '@/components/ProfitStrateg
 import { SoundToggle } from '@/components/SoundToggle';
 import { SubscriptionBadge } from '@/components/SubscriptionBadge';
 import { TrialCountdown } from '@/components/TrialCountdown';
-import { SubscriptionSync } from '@/components/SubscriptionSync';
 import { UsageIndicator } from '@/components/UsageIndicator';
 import { OnboardingTour } from '@/components/OnboardingTour';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { analyzeHand, calculateHandTotal, getDealerBustProbability, type HandAnalysis } from '@/lib/blackjackStrategy';
 import { 
   createDeckState, 
@@ -64,6 +64,7 @@ const ONBOARDING_STEPS = [
 export default function Index() {
   const navigate = useNavigate();
   const { user, profile, loading, signOut, getUsageLimits, canUseCIS, refetchProfile } = useAuth();
+  const { canAccess, isTrialExpired } = useSubscriptionAccess();
   
   const [playerCards, setPlayerCards] = useState<string[]>([]);
   const [dealerUpcard, setDealerUpcard] = useState<string | null>(null);
@@ -475,6 +476,53 @@ export default function Index() {
   const { total, soft } = playerCards.length >= 1 ? calculateHandTotal(playerCards) : { total: 0, soft: false };
   const bustProbability = dealerUpcard ? getDealerBustProbability(dealerUpcard) : 0;
 
+  // Show access-blocked screen when trial expired and no active subscription
+  if (!loading && user && isTrialExpired && !canAccess) {
+    return (
+      <div className="min-h-screen bg-background cyber-grid flex items-center justify-center p-6">
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-destructive/10 rounded-full blur-[150px] animate-pulse" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 text-center max-w-md w-full"
+        >
+          <div className="p-8 rounded-2xl border border-destructive/30 bg-card/80 backdrop-blur-sm shadow-[0_0_60px_rgba(239,68,68,0.15)]">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-display font-black text-foreground mb-2 uppercase tracking-wider">
+              Trial Expired
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Your 1-hour free trial has ended. Subscribe to continue using Neon21.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/pricing')}
+                className="w-full py-3 px-6 rounded-lg bg-primary text-primary-foreground font-bold text-sm uppercase tracking-wider hover:bg-primary/90 transition-colors"
+              >
+                Subscribe Now
+              </button>
+              <button
+                onClick={() => { signOut(); navigate('/auth'); }}
+                className="w-full py-3 px-6 rounded-lg border border-border text-muted-foreground font-medium text-sm hover:text-foreground transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground/60 mt-4">
+              Weekly from $19.82 • Monthly from $59.82
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background cyber-grid relative overflow-hidden">
       {/* Quick Action Overlay for Turbo Mode */}
@@ -730,7 +778,15 @@ export default function Index() {
           <div className="space-y-3">
             {profile?.tier === 'free' && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <SubscriptionSync onSyncComplete={refetchProfile} />
+                <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 backdrop-blur-sm text-center">
+                  <p className="text-xs text-muted-foreground mb-2">Enjoying the trial? Subscribe to keep access.</p>
+                  <button
+                    onClick={() => navigate('/pricing')}
+                    className="w-full py-2 px-4 rounded-lg bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider hover:bg-primary/90 transition-colors"
+                  >
+                    View Plans
+                  </button>
+                </div>
               </motion.div>
             )}
             {profile && (
