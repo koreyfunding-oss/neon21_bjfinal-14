@@ -23,7 +23,6 @@ import { ProfitStrategy, type BettingStrategy } from '@/components/ProfitStrateg
 import { SoundToggle } from '@/components/SoundToggle';
 import { SubscriptionBadge } from '@/components/SubscriptionBadge';
 import { TrialCountdown } from '@/components/TrialCountdown';
-import { SubscriptionSync } from '@/components/SubscriptionSync';
 import { UsageIndicator } from '@/components/UsageIndicator';
 import { OnboardingTour } from '@/components/OnboardingTour';
 import { useAuth } from '@/hooks/useAuth';
@@ -728,11 +727,6 @@ export default function Index() {
           </div>
 
           <div className="space-y-3">
-            {profile?.tier === 'free' && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <SubscriptionSync onSyncComplete={refetchProfile} />
-              </motion.div>
-            )}
             {profile && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="p-3 rounded-xl border border-border bg-card/80 backdrop-blur-sm">
                 <h3 className="text-xs font-display font-bold text-primary mb-2 uppercase tracking-wider">Usage</h3>
