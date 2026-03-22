@@ -119,7 +119,11 @@ export default function Index() {
   const isPremium = profile?.tier !== 'free';
   const isElite = profile?.tier === 'elite' || profile?.tier === 'blackout' || profile?.tier === 'lifetime';
 
-  const now = Date.now();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
   const trialStartSource = profile?.trial_started_at || user?.created_at || null;
   const trialEndsAt = trialStartSource ? new Date(trialStartSource).getTime() + (60 * 60 * 1000) : null; // 1 hour
   const subscriptionEndsAt = profile?.subscription_expires_at ? new Date(profile.subscription_expires_at).getTime() : null;
