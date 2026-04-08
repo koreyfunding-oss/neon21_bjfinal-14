@@ -10,6 +10,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Pricing from "./pages/Pricing";
 import Checkout from "./pages/Checkout";
+import AffiliateBackoffice from "./pages/AffiliateBackoffice";
+import AdminAffiliates from "./pages/AdminAffiliates";
 import NotFound from "./pages/NotFound";
 import { useCapacitor } from "./hooks/useCapacitor";
 
@@ -32,6 +34,8 @@ const App = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/affiliate" element={<AffiliateBackoffice />} />
+          <Route path="/admin/affiliates" element={<AdminAffiliates />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -14,6 +14,154 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_earnings: {
+        Row: {
+          affiliate_id: string
+          amount: number
+          created_at: string
+          id: string
+          referral_id: string | null
+          type: Database["public"]["Enums"]["earning_type"]
+        }
+        Insert: {
+          affiliate_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          referral_id?: string | null
+          type?: Database["public"]["Enums"]["earning_type"]
+        }
+        Update: {
+          affiliate_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          referral_id?: string | null
+          type?: Database["public"]["Enums"]["earning_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_earnings_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_earnings_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_payouts: {
+        Row: {
+          affiliate_id: string
+          amount: number
+          approved_at: string | null
+          completed_at: string | null
+          destination_details: Json
+          id: string
+          notes: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          requested_at: string
+          square_transfer_id: string | null
+          status: Database["public"]["Enums"]["payout_status"]
+        }
+        Insert: {
+          affiliate_id: string
+          amount: number
+          approved_at?: string | null
+          completed_at?: string | null
+          destination_details?: Json
+          id?: string
+          notes?: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          requested_at?: string
+          square_transfer_id?: string | null
+          status?: Database["public"]["Enums"]["payout_status"]
+        }
+        Update: {
+          affiliate_id?: string
+          amount?: number
+          approved_at?: string | null
+          completed_at?: string | null
+          destination_details?: Json
+          id?: string
+          notes?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          requested_at?: string
+          square_transfer_id?: string | null
+          status?: Database["public"]["Enums"]["payout_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_payouts_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliates: {
+        Row: {
+          affiliate_type: Database["public"]["Enums"]["affiliate_type"]
+          available_balance: number
+          commission_rate: number
+          created_at: string
+          id: string
+          kyc_status: Database["public"]["Enums"]["kyc_status"]
+          kyc_verified_at: string | null
+          marketing_links_json: Json | null
+          referral_code: string
+          status: Database["public"]["Enums"]["affiliate_status"]
+          total_earnings: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          affiliate_type?: Database["public"]["Enums"]["affiliate_type"]
+          available_balance?: number
+          commission_rate?: number
+          created_at?: string
+          id?: string
+          kyc_status?: Database["public"]["Enums"]["kyc_status"]
+          kyc_verified_at?: string | null
+          marketing_links_json?: Json | null
+          referral_code: string
+          status?: Database["public"]["Enums"]["affiliate_status"]
+          total_earnings?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          affiliate_type?: Database["public"]["Enums"]["affiliate_type"]
+          available_balance?: number
+          commission_rate?: number
+          created_at?: string
+          id?: string
+          kyc_status?: Database["public"]["Enums"]["kyc_status"]
+          kyc_verified_at?: string | null
+          marketing_links_json?: Json | null
+          referral_code?: string
+          status?: Database["public"]["Enums"]["affiliate_status"]
+          total_earnings?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cis_logs: {
         Row: {
           aggression_mode: string | null
@@ -227,12 +375,53 @@ export type Database = {
         Args: { days_valid?: number; profile_user_id: string }
         Returns: undefined
       }
+      approve_affiliate: {
+        Args: { p_affiliate_id: string }
+        Returns: undefined
+      }
+      approve_payout: {
+        Args: { p_payout_id: string }
+        Returns: undefined
+      }
+      complete_payout: {
+        Args: { p_payout_id: string; p_square_transfer_id?: string }
+        Returns: undefined
+      }
+      create_affiliate: {
+        Args: { p_affiliate_type?: Database["public"]["Enums"]["affiliate_type"] }
+        Returns: string
+      }
+      fail_payout: {
+        Args: { p_payout_id: string; p_notes?: string }
+        Returns: undefined
+      }
       increment_cis_usage: {
         Args: { profile_user_id: string }
         Returns: undefined
       }
       increment_sidebet_usage: {
         Args: { profile_user_id: string }
+        Returns: undefined
+      }
+      record_affiliate_earning: {
+        Args: {
+          p_affiliate_id: string
+          p_referral_id: string | null
+          p_amount: number
+          p_type?: Database["public"]["Enums"]["earning_type"]
+        }
+        Returns: undefined
+      }
+      reject_affiliate: {
+        Args: { p_affiliate_id: string }
+        Returns: undefined
+      }
+      set_kyc_rejected: {
+        Args: { p_affiliate_id: string }
+        Returns: undefined
+      }
+      set_kyc_verified: {
+        Args: { p_affiliate_id: string }
         Returns: undefined
       }
       update_user_tier: {
@@ -244,6 +433,12 @@ export type Database = {
       }
     }
     Enums: {
+      affiliate_status: "pending" | "approved" | "rejected" | "inactive"
+      affiliate_type: "standard" | "influencer"
+      earning_type: "signup" | "conversion" | "subscription"
+      kyc_status: "not_started" | "pending" | "verified" | "rejected"
+      payment_method: "paypal" | "apple_pay" | "bank_transfer" | "other"
+      payout_status: "pending" | "approved" | "processing" | "completed" | "failed"
       subscription_tier: "free" | "basic" | "elite" | "blackout" | "lifetime"
     }
     CompositeTypes: {
@@ -372,6 +567,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      affiliate_status: ["pending", "approved", "rejected", "inactive"],
+      affiliate_type: ["standard", "influencer"],
+      earning_type: ["signup", "conversion", "subscription"],
+      kyc_status: ["not_started", "pending", "verified", "rejected"],
+      payment_method: ["paypal", "apple_pay", "bank_transfer", "other"],
+      payout_status: ["pending", "approved", "processing", "completed", "failed"],
       subscription_tier: ["free", "basic", "elite", "blackout", "lifetime"],
     },
   },
